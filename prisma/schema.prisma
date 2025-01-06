@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String       @unique
+  password  String
+  role      UserRoleEnum
+  status    UserStatus   @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @default(now())
+  Admin     Admin?
+  Maid      Maid?
+  Employer  Employer?
+
+  @@map("users")
+}
+
+model Maid {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  age          Int
+  nationality  String
+  experience   Int // Years of experience
+  languages    String[] // Languages the maid can speak
+  photo        String? // URL to the maid's photo
+  biodataUrl   String? // URL to download PDF biodata
+  availability Boolean  @default(true)
+  rating       Float? // Average rating by employers
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
+
+  // Explicit many-to-many relationship via relation table
+  skills MaidSkill[]
+
+  EmployerFavorite EmployerFavorite[]
+  Interview        Interview[]
+  userId           String             @unique @db.ObjectId
+  user             User               @relation(fields: [userId], references: [id])
+
+  @@map("maids")
+}
+
+model Employer {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  phone       String
+  countryCode String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+
+  // Explicit many-to-many relationship via relation table
+  favorites  EmployerFavorite[]
+  interviews Interview[]
+  User       User               @relation(fields: [userId], references: [id])
+  userId     String             @unique @db.ObjectId
+
+  @@map("employers")
+}
+
+model Admin {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  User      User?    @relation(fields: [userId], references: [id])
+  userId    String?  @unique @db.ObjectId
+
+  @@map("admins")
+}
+
+model Skill {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  // Explicit many-to-many relationship via relation table
+  maids MaidSkill[]
+
+  @@map("skills")
+}
+
+model MaidSkill {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  maidId  String @db.ObjectId
+  skillId String @db.ObjectId
+
+  maid  Maid  @relation(fields: [maidId], references: [id])
+  skill Skill @relation(fields: [skillId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("maid_skills")
+}
+
+model EmployerFavorite {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  employerId String @db.ObjectId
+  maidId     String @db.ObjectId
+
+  employer Employer @relation(fields: [employerId], references: [id])
+  maid     Maid     @relation(fields: [maidId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("employer_favorites")
+}
+
+model Interview {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  employerId String @db.ObjectId
+  maidId     String @db.ObjectId
+
+  employer Employer @relation(fields: [employerId], references: [id])
+  maid     Maid     @relation(fields: [maidId], references: [id])
+
+  date   DateTime // Scheduled date of the interview
+  status InterviewStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@map("interviews")
+}
+
+enum InterviewStatus {
+  PENDING
+  COMPLETED
+  CANCELED
+}
+
+enum UserRoleEnum {
+  SUPERADMIN
+  ADMIN
+  EMPLOYER
+  MAID
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
