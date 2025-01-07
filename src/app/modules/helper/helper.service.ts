@@ -1,46 +1,113 @@
 import prisma from '../../utils/prisma';
 import { Services } from '../service/service.service';
 import { TService } from '../service/service.interface';
+import { uploadFileToCloudinary } from '../../utils/uploadToCloudinary';
 
-const createHelper = async (helperData: TService) => {
+export const createHelper = async (
+  helperData: TService,
+  photo: Express.Multer.File,
+  biodata: Express.Multer.File
+) => {
   // Start a Prisma transaction
-  const result = await prisma.$transaction(async (prisma) => {
-    // Check if a Maid with the same email already exists
+  const result = await prisma.$transaction(async prisma => {
     const existingMaid = await prisma.maid.findUnique({
-      where: { email: helperData.email },
+      where: { email: helperData.email }
     });
 
     if (existingMaid) {
-      throw new Error("A maid with this email already exists.");
+      throw new Error('A maid with this email already exists.');
     }
 
-    // Get the service ID by service name
     let serviceId = await Services.getServiceIdByName(helperData.serviceName);
-
-    // If service doesn't exist, create it and get the ID
     if (!serviceId) {
       const service = await Services.createService(helperData.serviceName);
       serviceId = service.id;
     }
 
-    // Create a new Maid record in the database
+    let photoUrl = '';
+    let biodataUrl = '';
+
+    if (photo) {
+      photoUrl = await uploadFileToCloudinary(photo, 'maids/photos');
+    }
+
+    if (biodata) {
+      biodataUrl = await uploadFileToCloudinary(biodata, 'maids/biodatas');
+    }
+
     const maid = await prisma.maid.create({
       data: {
         name: helperData.name,
         email: helperData.email,
         age: helperData.age,
         experience: helperData.experience,
-        serviceId: serviceId, // Link the maid to a Service
-        photo: helperData.photo || "",
-        biodataUrl: helperData.biodataUrl || "",
-        availability: helperData.availability,
-      },
+        serviceId,
+        photo: photoUrl,
+        biodataUrl,
+        availability: helperData.availability
+      }
     });
 
     return maid;
   });
 
   return result;
+};
+
+const bulkCreateHelpers = async (helpers: any[]) => {
+  const errors: string[] = [];
+  let successCount = 0;
+
+  for (const helper of helpers) {
+    try {
+      // Check if the service exists
+      let service = await prisma.service.findUnique({
+        where: { name: helper.serviceName },
+      });
+
+      // Create the service if it doesn't exist
+      if (!service) {
+        service = await prisma.service.create({
+          data: { name: helper.serviceName },
+        });
+      }
+
+      // Check if the helper already exists by email
+      const existingHelper = await prisma.maid.findUnique({
+        where: { email: helper.email },
+      });
+
+      if (existingHelper) {
+        errors.push(`Helper with email ${helper.email} already exists.`);
+        continue; // Skip to the next helper
+      }
+
+      console.log(helper.availability)
+
+      // Create the new helper
+      const result = await prisma.maid.create({
+        data: {
+          name: helper.name,
+          email: helper.email,
+          age: Number(helper.age),
+          experience: Number(helper.experience),
+          serviceId: service.id,
+          availability: helper.availability.toString().toLowerCase() === 'true',
+        },
+      });
+
+      console.log(`Helper created: ${result.name}`);
+      successCount++; // Increment success count
+    } catch (error: any) {
+      // Handle individual helper error
+      errors.push(
+        `Failed to insert helper with email ${helper.email}: ${error.message}`
+      );
+    }
+  }
+
+  // Return the results
+  return { successCount, errors };
 };
 
 
@@ -185,9 +252,9 @@ const createHelper = async (helperData: TService) => {
 //   return updatedFavorites;
 // };
 
-
 export const HelperServices = {
   createHelper,
+  bulkCreateHelpers
   // getAllHelpers,
   // addHelperToFavorites
 };

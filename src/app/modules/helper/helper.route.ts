@@ -4,23 +4,27 @@ import { HelperValidation } from './helper.validation';
 import { HelperControllers } from './helper.controller';
 import auth from '../../middlewares/auth';
 import { UserRoleEnum } from '@prisma/client';
+import { uploadMiddleware, uploadMultipleMiddleware } from '../../utils/uploadMiddleware';
 
 const router = express.Router();
 
 router.post(
   "/",
   auth(UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),
-  validateRequest(HelperValidation.createHelper),
+  uploadMultipleMiddleware,
+  // validateRequest(HelperValidation.createHelper),
   HelperControllers.createHelper,
 );
 
-router.get(
-  "/",
-  auth(UserRoleEnum.USER,UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),
-  HelperControllers.getAllHelpers
-);
+router.post("/upload-helper",auth(UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),uploadMiddleware,HelperControllers.createHelpers)
 
-router.post('/favorites/add/:maidId',auth(UserRoleEnum.USER),HelperControllers.addHelperToFavorites)
+// router.get(
+//   "/",
+//   auth(UserRoleEnum.USER,UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),
+//   HelperControllers.getAllHelpers
+// );
+//
+// router.post('/favorites/add/:maidId',auth(UserRoleEnum.USER),HelperControllers.addHelperToFavorites)
 
 // router.put(
 //   "/:id",
