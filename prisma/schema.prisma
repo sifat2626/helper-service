@@ -12,55 +12,38 @@ model User {
   name      String
   email     String       @unique
   password  String
-  role      UserRoleEnum
+  role      UserRoleEnum @default(USER)
   status    UserStatus   @default(ACTIVE)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @default(now())
   Admin     Admin?
-  Maid      Maid?
-  Employer  Employer?
+
+  // One-to-many relationship for the user's favorite maids
+  favorites Favorite[]
+  Booking   Booking[]
 
   @@map("users")
 }
 
 model Maid {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  email        String   @unique
   age          Int
-  nationality  String
   experience   Int // Years of experience
-  languages    String[] // Languages the maid can speak
+  service      Service  @relation(fields: [serviceId], references: [id])
+  serviceId    String   @db.ObjectId
   photo        String? // URL to the maid's photo
   biodataUrl   String? // URL to download PDF biodata
   availability Boolean  @default(true)
-  rating       Float? // Average rating by employers
+  rating       Float?   @default(0) // Default rating is 0, optional if not rated
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now())
 
-  // Explicit many-to-many relationship via relation table
-  skills MaidSkill[]
-
-  EmployerFavorite EmployerFavorite[]
-  Interview        Interview[]
-  userId           String             @unique @db.ObjectId
-  user             User               @relation(fields: [userId], references: [id])
+  Booking  Booking[]
+  Favorite Favorite[]
 
   @@map("maids")
-}
-
-model Employer {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  phone       String
-  countryCode String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now())
-
-  // Explicit many-to-many relationship via relation table
-  favorites  EmployerFavorite[]
-  interviews Interview[]
-  User       User               @relation(fields: [userId], references: [id])
-  userId     String             @unique @db.ObjectId
-
-  @@map("employers")
 }
 
 model Admin {
@@ -73,72 +56,56 @@ model Admin {
   @@map("admins")
 }
 
-model Skill {
+model Booking {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @db.ObjectId
+  maidId String @db.ObjectId
+
+  maid Maid @relation(fields: [maidId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  date      DateTime // Booking date
+  status    BookingStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @default(now())
+
+  @@map("bookings")
+}
+
+model Service {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
-  // Explicit many-to-many relationship via relation table
-  maids MaidSkill[]
+  maids Maid[]
 
-  @@map("skills")
+  @@map("services")
 }
 
-model MaidSkill {
-  id      String @id @default(auto()) @map("_id") @db.ObjectId
-  maidId  String @db.ObjectId
-  skillId String @db.ObjectId
+model Favorite {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @db.ObjectId
+  maidId String @db.ObjectId
 
-  maid  Maid  @relation(fields: [maidId], references: [id])
-  skill Skill @relation(fields: [skillId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  maid Maid @relation(fields: [maidId], references: [id])
 
   createdAt DateTime @default(now())
 
-  @@map("maid_skills")
+  @@map("favorites")
 }
 
-model EmployerFavorite {
-  id         String @id @default(auto()) @map("_id") @db.ObjectId
-  employerId String @db.ObjectId
-  maidId     String @db.ObjectId
-
-  employer Employer @relation(fields: [employerId], references: [id])
-  maid     Maid     @relation(fields: [maidId], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@map("employer_favorites")
-}
-
-model Interview {
-  id         String @id @default(auto()) @map("_id") @db.ObjectId
-  employerId String @db.ObjectId
-  maidId     String @db.ObjectId
-
-  employer Employer @relation(fields: [employerId], references: [id])
-  maid     Maid     @relation(fields: [maidId], references: [id])
-
-  date   DateTime // Scheduled date of the interview
-  status InterviewStatus @default(PENDING)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
-
-  @@map("interviews")
-}
-
-enum InterviewStatus {
+enum BookingStatus {
   PENDING
   COMPLETED
   CANCELED
 }
 
 enum UserRoleEnum {
+  USER
   SUPERADMIN
   ADMIN
-  EMPLOYER
-  MAID
 }
 
 enum UserStatus {

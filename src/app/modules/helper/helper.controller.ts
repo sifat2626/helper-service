@@ -4,8 +4,7 @@ import httpStatus from 'http-status';
 import { HelperServices } from './helper.service';
 
 const createHelper = catchAsync(async (req, res) => {
-  const userId = req.user.id;
-  const result = await HelperServices.createHelper(userId, req.body);
+  const result = await HelperServices.createHelper( req.body);
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     message: 'Maid Created',

@@ -11,57 +11,25 @@ const registerUserIntoDB = async (payload: any) => {
   // Hash the user's password
   const hashedPassword: string = await bcrypt.hash(payload.password, 12);
 
-  // Prevent users from setting themselves as SUPERADMIN or ADMIN
-  if (
-    payload.role === UserRoleEnum.SUPERADMIN ||
-    payload.role === UserRoleEnum.ADMIN
-  ) {
-    throw new AppError(400, 'You cannot set yourself as an admin');
+  // Ensure the role is always set to USER during registration
+  if (payload.role && payload.role !== UserRoleEnum.USER) {
+    throw new AppError(400, "Users can only be registered with the USER role.");
   }
 
+  // Prepare user data
   const userData = {
     name: payload.name,
     email: payload.email,
-    role: payload.role,
+    role: UserRoleEnum.USER, // Role is always USER during registration
     password: hashedPassword,
   };
 
-  // Use a transaction to ensure atomicity
-  const result = await prisma.$transaction(async (prisma) => {
-    // Step 1: Create the User
-    const createdUser = await prisma.user.create({
-      data: userData,
-    });
-
-    // Step 2: Create the associated Employer or Maid record based on the role
-    if (payload.role === 'EMPLOYER') {
-      await prisma.employer.create({
-        data: {
-          phone: payload.phone,
-          countryCode: payload.countryCode,
-          userId: createdUser.id, // Link to the created user
-        },
-      });
-    } else if (payload.role === 'MAID') {
-      await prisma.maid.create({
-        data: {
-          age: payload.age,
-          nationality: payload.nationality,
-          experience: payload.experience,
-          languages: payload.languages,
-          photo: payload.photo,
-          biodataUrl: payload.biodataUrl,
-          availability: payload.availability,
-          userId: createdUser.id, // Link to the created user
-        },
-      });
-    }
-
-    // Step 3: Return the created user
-    return createdUser;
+  // Create the user
+  const createdUser = await prisma.user.create({
+    data: userData,
   });
 
-  return result;
+  return createdUser;
 };
 
 // const getAllUsersFromDB = async () => {

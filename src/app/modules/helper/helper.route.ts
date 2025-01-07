@@ -9,18 +9,18 @@ const router = express.Router();
 
 router.post(
   "/",
-  auth(UserRoleEnum.MAID),
+  auth(UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),
   validateRequest(HelperValidation.createHelper),
   HelperControllers.createHelper,
 );
 
 router.get(
   "/",
-  auth(UserRoleEnum.EMPLOYER,UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),
+  auth(UserRoleEnum.USER,UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),
   HelperControllers.getAllHelpers
 );
 
-router.post('/favorites/add/:maidId',auth(UserRoleEnum.EMPLOYER),HelperControllers.addHelperToFavorites)
+router.post('/favorites/add/:maidId',auth(UserRoleEnum.USER),HelperControllers.addHelperToFavorites)
 
 // router.put(
 //   "/:id",

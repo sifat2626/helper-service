@@ -24,7 +24,7 @@ const loginUserFromDB = async (payload: {
     throw new AppError(httpStatus.BAD_REQUEST, 'Password incorrect');
   }
 
-  const accessToken = await generateToken(
+  const accessToken = generateToken(
     {
       id: userData.id,
       name: userData.name,
