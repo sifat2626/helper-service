@@ -24,7 +24,8 @@ router.get(
   HelperControllers.getAllHelpers
 );
 //
-// router.post('/favorites/add/:maidId',auth(UserRoleEnum.USER),HelperControllers.addHelperToFavorites)
+router.post('/favorites/add/:maidId',auth(UserRoleEnum.USER),HelperControllers.addHelperToFavorites)
+router.post('/book/:maidId',auth(UserRoleEnum.USER),HelperControllers.bookHelper)
 
 // router.put(
 //   "/:id",
@@ -38,10 +39,9 @@ router.get(
 //   HelperControllers.getHelperById
 // );
 //
-// router.delete(
-//   "/:id",
-//   validate(helperValidation.deleteHelper),
-//   HelperControllers.deleteHelper
-// );
+router.delete(
+  "/:id",
+  HelperControllers.deleteHelper
+);
 
 export const HelperRoutes = router;

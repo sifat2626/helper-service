@@ -3,7 +3,8 @@ import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { HelperServices } from './helper.service';
 import { Request } from 'express';
-import AppError from '../../errors/AppError'; // Import the extended Request type
+import AppError from '../../errors/AppError';
+import prisma from '../../utils/prisma'; // Import the extended Request type
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -20,15 +21,16 @@ const createHelper = catchAsync(async (req: Request, res) => {
 
   // Extract the first file from each field
   const photo = req.files?.image?.[0]; // Safely get the first image file
-  const biodata = req.files?.pdf?.[0]; // Safely get the first PDF file
+  let  biodata = req.files?.pdf?.[0]; // Safely get the first PDF file
 
   // Ensure both photo and biodata files are provided
-  if (!photo || !biodata) {
+  if (!photo ) {
     return res.status(400).json({
       success: false,
-      message: 'Both photo and biodata files are required.',
+      message: 'Photo is required.',
     });
   }
+
 
   // Call the service function
   const result = await HelperServices.createHelper(bodyData, photo, biodata);
@@ -100,7 +102,6 @@ const createHelpers = catchAsync(async (req: Request, res) => {
 });
 
 const getAllHelpers = catchAsync(async (req, res) => {
-  const userId = req.user.id;
   const result = await HelperServices.getAllHelpers(req.query);
 
   sendResponse(res, {
@@ -109,21 +110,64 @@ const getAllHelpers = catchAsync(async (req, res) => {
     data: result,
   });
 });
+
+const updateHelper = catchAsync(async (req: Request, res) => {
+  const { id } = req.params;
+
+  const helperData = JSON.parse(req.body.data);
+
+  // Files from the request
+  const photo = req.files?.image?.[0];
+  const biodata = req.files?.pdf?.[0];
+
+  const result = await HelperServices.updateHelper(id, helperData, photo, biodata);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    message: 'Helper updated successfully.',
+    data: result,
+  });
+});
+
+
+const deleteHelper = catchAsync(async (req: Request, res) => {
+  const { id } = req.params;
+  const result = await HelperServices.deleteHelper(id);
+  sendResponse(res, {
+    statusCode: httpStatus.NO_CONTENT,
+    message: 'helpers deleted successfully',
+    data: result,
+  });
+})
 //
-// const addHelperToFavorites = catchAsync(async (req, res) => {
-//   const userId = req.user.id;
-//   const maidId = req.params.maidId;
-//   const result = await HelperServices.addHelperToFavorites(userId,maidId)
-//   sendResponse(res, {
-//     statusCode:201,
-//     message:'added to favorites',
-//     data: result,
-//   })
-// })
+const addHelperToFavorites = catchAsync(async (req, res) => {
+  const userId = req.user.id;
+  const maidId = req.params.maidId;
+  const result = await HelperServices.addHelperToFavorites(userId,maidId)
+  sendResponse(res, {
+    statusCode:201,
+    message:'added to favorites',
+    data: result,
+  })
+})
+
+const bookHelper = catchAsync(async (req: Request, res) => {
+  const userId = req.user.id;
+  const maidId = req.params.maidId;
+  const result = await HelperServices.bookHelper(userId, maidId);
+  sendResponse(res, {
+    statusCode:201,
+    message:'booked maid successfully',
+    data: result,
+  })
+})
 
 export const HelperControllers = {
   createHelper,
   createHelpers,
   getAllHelpers,
-  // addHelperToFavorites
+  updateHelper,
+  deleteHelper,
+  addHelperToFavorites,
+  bookHelper
 };

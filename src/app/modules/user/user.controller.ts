@@ -78,6 +78,18 @@ const registerUser = catchAsync(async (req, res) => {
 //   });
 // });
 
+const changeRole = catchAsync(async (req, res) => {
+  const userId = req.user.id;
+  const {id,role} = req.params
+  const result = await UserServices.changeRole(userId,id,role)
+
+    sendResponse(res, {
+    statusCode: httpStatus.OK,
+    message: 'Role changed successfully',
+    data: result,
+  });
+})
+
 export const UserControllers = {
   registerUser,
   // getAllUsers,
@@ -86,4 +98,5 @@ export const UserControllers = {
   // updateMyProfile,
   // updateUserRoleStatus,
   // changePassword,
+  changeRole
 };

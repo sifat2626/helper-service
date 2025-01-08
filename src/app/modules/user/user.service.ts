@@ -13,7 +13,15 @@ const registerUserIntoDB = async (payload: any) => {
 
   // Ensure the role is always set to USER during registration
   if (payload.role && payload.role !== UserRoleEnum.USER) {
-    throw new AppError(400, "Users can only be registered with the USER role.");
+    throw new AppError(400, 'Users can only be registered with the USER role.');
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email: payload.email },
+  });
+
+  if (existingUser) {
+    throw new AppError(400, 'User already exists');
   }
 
   // Prepare user data
@@ -32,21 +40,22 @@ const registerUserIntoDB = async (payload: any) => {
   return createdUser;
 };
 
-// const getAllUsersFromDB = async () => {
-//   const result = await prisma.user.findMany({
-//     select: {
-//       id: true,
-//       name: true,
-//       email: true,
-//       role: true,
-//       status: true,
-//       createdAt: true,
-//       updatedAt: true,
-//     },
-//   });
-//
-//   return result;
-// };
+const getAllUsersFromDB = async (filter:any) => {
+
+  const result = await prisma.user.findMany({
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  return result;
+};
 //
 // const getMyProfileFromDB = async (id: string) => {
 //   const Profile = await prisma.user.findUniqueOrThrow({
@@ -161,6 +170,71 @@ const registerUserIntoDB = async (payload: any) => {
 //   };
 // };
 
+const changeRole = async (
+  userId: string,
+  targetUserId: string,
+  role: string,
+) => {
+  return prisma.$transaction(
+    async prisma => {
+      // Check if the current user has sufficient permissions
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      console.log(currentUser);
+
+      if (!currentUser) {
+        throw new AppError(
+          403,
+          'You do not have permission to perform this action.',
+        );
+      }
+
+      if (
+        currentUser.role !== UserRoleEnum.SUPERADMIN &&
+        currentUser.role !== UserRoleEnum.ADMIN
+      ) {
+        throw new AppError(
+          403,
+          'You do not have permission to perform this action.',
+        );
+      }
+
+      // Check if the target user exists
+      const targetUser = await prisma.user.findUnique({
+        where: { id: targetUserId },
+      });
+
+      if (!targetUser) {
+        throw new AppError(400, 'Target user does not exist.');
+      }
+
+      // Validate the role
+      const validRoles = Object.values(UserRoleEnum); // Get all valid roles from the enum
+      if (!validRoles.includes(role as UserRoleEnum)) {
+        throw new AppError(400, 'Invalid role specified.');
+      }
+
+      // Prevent assigning SUPERADMIN role (if necessary)
+      if (role === UserRoleEnum.SUPERADMIN) {
+        throw new AppError(403, 'You cannot assign the SUPERADMIN role.');
+      }
+
+      // Update the target user's role
+      const updatedUser = await prisma.user.update({
+        where: { id: targetUserId },
+        data: { role: role as UserRoleEnum },
+      });
+
+      return updatedUser;
+    },
+    {
+      timeout: 10000, // Increase timeout to 10 seconds (10000 ms)
+    },
+  );
+};
+
 export const UserServices = {
   registerUserIntoDB,
   // getAllUsersFromDB,
@@ -169,4 +243,5 @@ export const UserServices = {
   // updateMyProfileIntoDB,
   // updateUserRoleStatusIntoDB,
   // changePassword,
+  changeRole,
 };

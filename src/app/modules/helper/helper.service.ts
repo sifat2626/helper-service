@@ -2,17 +2,20 @@ import prisma from '../../utils/prisma';
 import { Services } from '../service/service.service';
 import { TService } from '../service/service.interface';
 import { uploadFileToCloudinary } from '../../utils/uploadToCloudinary';
+import { isDataReferenced } from '../../utils/checkReference';
 import AppError from '../../errors/AppError';
+import { UserRoleEnum } from '@prisma/client';
+import { sendEmail } from '../../utils/sendEmail';
 
 export const createHelper = async (
   helperData: TService,
   photo: Express.Multer.File,
-  biodata: Express.Multer.File
+  biodata?: Express.Multer.File,
 ) => {
   // Start a Prisma transaction
   const result = await prisma.$transaction(async prisma => {
     const existingMaid = await prisma.maid.findUnique({
-      where: { email: helperData.email }
+      where: { email: helperData.email },
     });
 
     if (existingMaid) {
@@ -45,8 +48,8 @@ export const createHelper = async (
         serviceId,
         photo: photoUrl,
         biodataUrl,
-        availability: helperData.availability
-      }
+        availability: helperData.availability,
+      },
     });
 
     return maid;
@@ -100,13 +103,13 @@ const bulkCreateHelpers = async (helpers: any[]) => {
       console.log(
         result.email === helper.email
           ? `Helper updated: ${result.name}`
-          : `Helper created: ${result.name}`
+          : `Helper created: ${result.name}`,
       );
       successCount++; // Increment success count
     } catch (error: any) {
       // Handle individual helper error
       errors.push(
-        `Failed to insert or update helper with email ${helper.email}: ${error.message}`
+        `Failed to insert or update helper with email ${helper.email}: ${error.message}`,
       );
     }
   }
@@ -115,10 +118,19 @@ const bulkCreateHelpers = async (helpers: any[]) => {
   return { successCount, errors };
 };
 
-
-
 const getAllHelpers = async (query: any) => {
-  const { limit = 10, page = 1, minAge, maxAge, experience, serviceId, availability, name, email } = query;
+  const {
+    limit = 10,
+    page = 1,
+    minAge,
+    maxAge,
+    experience,
+    serviceId,
+    availability,
+    name,
+    id,
+    email,
+  } = query;
 
   // Step 1: Validate if the user exists
   // const user = await prisma.user.findUnique({
@@ -137,14 +149,18 @@ const getAllHelpers = async (query: any) => {
   if (name) {
     filters.name = {
       contains: name,
-      mode: 'insensitive'
+      mode: 'insensitive',
     };
+  }
+
+  if (id) {
+    filters.id = id;
   }
 
   if (email) {
     filters.email = {
       contains: email,
-      mode: 'insensitive'
+      mode: 'insensitive',
     };
   }
 
@@ -170,7 +186,7 @@ const getAllHelpers = async (query: any) => {
   }
 
   if (serviceId) {
-    filters.serviceId = serviceId
+    filters.serviceId = serviceId;
   }
 
   if (availability !== undefined) {
@@ -207,77 +223,187 @@ const getAllHelpers = async (query: any) => {
     data: helpers,
   };
 };
-//
-// const addHelperToFavorites = async (userId: string, maidId: string) => {
-//   // Step 1: Validate if the user exists and has the role of an employer
-//   console.log('AddHelperToFavorites', userId);
-//   const employer = await prisma.employer.findUnique({
-//     where: {
-//       userId: userId, // Check in the Employer table based on the userId
-//     },
-//   });
-//
-//   if (!employer) {
-//     throw new AppError(400, 'Employer does not exist in the Employer table');
-//   }
-//
-//   // Step 2: Validate if the maid exists
-//   const maid = await prisma.maid.findUnique({
-//     where: {
-//       id: maidId, // Validate the Maid ID
-//     },
-//   });
-//
-//   if (!maid) {
-//     throw new AppError(400, 'Helper (maid) does not exist');
-//   }
-//
-//   // Step 3: Check if the helper is already in the favorites list
-//   const existingFavorite = await prisma.employerFavorite.findFirst({
-//     where: {
-//       AND: [
-//         { employerId: employer.id }, // Match employerId
-//         { maidId: maidId },          // Match maidId
-//       ],
-//     },
-//   });
-//
-//   if (existingFavorite) {
-//     throw new AppError(400, 'This helper is already in your favorites');
-//   }
-//
-//   // Step 4: Add helper to favorites using `connect`
-//   const newFavorite = await prisma.employerFavorite.create({
-//     data: {
-//       employer: {
-//         connect: {
-//           id: employer.id, // Connect to the Employer table using employerId
-//         },
-//       },
-//       maid: {
-//         connect: {
-//           id: maidId, // Connect to the Maid table using maidId
-//         },
-//       },
-//     },
-//   });
-//
-//   // Step 5: Return the updated list of favorites
-//   const updatedFavorites = await prisma.employerFavorite.findMany({
-//     where: {
-//       employerId: employer.id, // Filter by the current employer's ID
-//     },
-//     include: {
-//       maid: true, // Include maid details in the response
-//     },
-//   });
-//
-//   return updatedFavorites;
-// };
+
+const updateHelper = async (
+  id: string,
+  helperData: Partial<TService>,
+  photo?: Express.Multer.File,
+  biodata?: Express.Multer.File,
+) => {
+  // Find the helper to update
+  const existingHelper = await prisma.maid.findUnique({
+    where: { id },
+  });
+
+  if (!existingHelper) {
+    throw new Error('Helper not found.');
+  }
+
+  // Upload new photo or keep the existing one
+  const photoUrl = photo
+    ? await uploadFileToCloudinary(photo, 'maids/photos')
+    : existingHelper.photo;
+
+  // Upload new biodata or keep the existing one
+  const biodataUrl = biodata
+    ? await uploadFileToCloudinary(biodata, 'maids/biodatas')
+    : existingHelper.biodataUrl;
+
+  // Update the helper
+  const updatedHelper = await prisma.maid.update({
+    where: { id },
+    data: {
+      ...helperData,
+      photo: photoUrl,
+      biodataUrl,
+    },
+  });
+
+  return updatedHelper;
+};
+
+const deleteHelper = async (id: string) => {
+  const referencingModels = [
+    { model: 'booking', field: 'maidId' },
+    { model: 'favorite', field: 'maidId' },
+  ];
+
+  const isReferenced = await isDataReferenced(
+    'maid',
+    'id',
+    id,
+    referencingModels,
+  );
+
+  if (isReferenced) {
+    throw new Error(
+      'This maid cannot be deleted because it is referenced in other records.',
+    );
+  }
+
+  return prisma.maid.delete({
+    where: { id },
+  });
+};
+
+const addHelperToFavorites = async (userId: string, maidId: string) => {
+  const maid = await prisma.maid.findUnique({
+    where: {
+      id: maidId,
+    },
+  });
+
+  if (!maid) {
+    throw new AppError(400, 'Sorry! Maid not found');
+  }
+
+  const existingFavorite = await prisma.favorite.findFirst({
+    where: {
+      userId: userId,
+      maidId: maidId,
+    },
+  });
+
+  if (existingFavorite) {
+    throw new AppError(400, 'This maid is already in your favorites.');
+  }
+
+  const result = await prisma.favorite.create({
+    data: {
+      maid: {
+        connect: {
+          id: maidId,
+        },
+      },
+      user: {
+        connect: {
+          id: userId,
+        },
+      },
+    },
+  });
+};
+
+const bookHelper = async (userId: string, maidId: string) => {
+  return prisma.$transaction(async prisma => {
+    // Check if maid exists and is available
+    const maid = await prisma.maid.findFirst({
+      where: {
+        id: maidId,
+        availability: true,
+      },
+    });
+
+    if (!maid) {
+      throw new AppError(
+        400,
+        'Sorry! Maid is either not found or unavailable.',
+      );
+    }
+
+    // Create the booking
+    const result = await prisma.booking.create({
+      data: {
+        maid: {
+          connect: {
+            id: maidId,
+          },
+        },
+        user: {
+          connect: {
+            id: userId,
+          },
+        },
+        date: new Date(),
+      },
+    });
+
+    // Set maid's availability to false
+    // await prisma.maid.update({
+    //   where: { id: maidId },
+    //   data: { availability: false },
+    // });
+
+    // Notify all admins via email
+    const admins = await prisma.user.findMany({
+      where: {
+        OR: [{ role: UserRoleEnum.ADMIN }, { role: UserRoleEnum.SUPERADMIN }],
+      },
+    });
+
+    if (admins.length === 0) {
+      console.warn('No admins found to notify.');
+    } else {
+      for (const admin of admins) {
+        console.log(admin);
+        if (admin.email) {
+          try {
+            await sendEmail(
+              admin.email,
+              'New Booking Notification',
+              `A new booking has been made for maid ${maid.name} by user ${userId}.`,
+            );
+          } catch (error) {
+            console.error(`Failed to send email to admin: ${admin.email}`);
+          }
+        } else {
+          console.warn(
+            `Admin with ID ${admin.id} has no associated user or email.`,
+          );
+        }
+      }
+    }
+
+    return result;
+  });
+};
 
 export const HelperServices = {
   createHelper,
   bulkCreateHelpers,
   getAllHelpers,
-  // addHelperToFavorites
+  updateHelper,
+  deleteHelper,
+  addHelperToFavorites,
+  bookHelper
 };

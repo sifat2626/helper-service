@@ -16,7 +16,6 @@ model User {
   status    UserStatus   @default(ACTIVE)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @default(now())
-  Admin     Admin?
 
   // One-to-many relationship for the user's favorite maids
   favorites Favorite[]
@@ -44,16 +43,6 @@ model Maid {
   Favorite Favorite[]
 
   @@map("maids")
-}
-
-model Admin {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
-  User      User?    @relation(fields: [userId], references: [id])
-  userId    String?  @unique @db.ObjectId
-
-  @@map("admins")
 }
 
 model Booking {
