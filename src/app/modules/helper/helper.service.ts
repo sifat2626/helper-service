@@ -2,6 +2,7 @@ import prisma from '../../utils/prisma';
 import { Services } from '../service/service.service';
 import { TService } from '../service/service.interface';
 import { uploadFileToCloudinary } from '../../utils/uploadToCloudinary';
+import AppError from '../../errors/AppError';
 
 export const createHelper = async (
   helperData: TService,
@@ -72,36 +73,40 @@ const bulkCreateHelpers = async (helpers: any[]) => {
         });
       }
 
-      // Check if the helper already exists by email
-      const existingHelper = await prisma.maid.findUnique({
+      // Use upsert to either create or update the helper
+      const result = await prisma.maid.upsert({
         where: { email: helper.email },
-      });
-
-      if (existingHelper) {
-        errors.push(`Helper with email ${helper.email} already exists.`);
-        continue; // Skip to the next helper
-      }
-
-      console.log(helper.availability)
-
-      // Create the new helper
-      const result = await prisma.maid.create({
-        data: {
+        update: {
+          name: helper.name,
+          age: Number(helper.age),
+          experience: Number(helper.experience),
+          serviceId: service.id,
+          availability: helper.availability.toString().toLowerCase() === 'true',
+          photo: helper.photo || '', // Default to empty string if not provided
+          biodataUrl: helper.biodataUrl || '', // Default to empty string if not provided
+        },
+        create: {
           name: helper.name,
           email: helper.email,
           age: Number(helper.age),
           experience: Number(helper.experience),
           serviceId: service.id,
           availability: helper.availability.toString().toLowerCase() === 'true',
+          photo: helper.photo || '', // Default to empty string if not provided
+          biodataUrl: helper.biodataUrl || '', // Default to empty string if not provided
         },
       });
 
-      console.log(`Helper created: ${result.name}`);
+      console.log(
+        result.email === helper.email
+          ? `Helper updated: ${result.name}`
+          : `Helper created: ${result.name}`
+      );
       successCount++; // Increment success count
     } catch (error: any) {
       // Handle individual helper error
       errors.push(
-        `Failed to insert helper with email ${helper.email}: ${error.message}`
+        `Failed to insert or update helper with email ${helper.email}: ${error.message}`
       );
     }
   }
@@ -111,79 +116,97 @@ const bulkCreateHelpers = async (helpers: any[]) => {
 };
 
 
-// const getAllHelpers = async (userId: string, query: any) => {
-//   const { limit = 10, page = 1, minAge, maxAge, nationality, availability } = query;
-//
-//   // Step 1: Validate if the user exists
-//   const user = await prisma.user.findUnique({
-//     where: {
-//       id: userId,
-//     },
-//   });
-//
-//   if (!user) {
-//     throw new AppError(400, 'User does not exist');
-//   }
-//
-//   // Step 2: Build dynamic filters based on query parameters
-//   const filters: any = {};
-//
-//   if (minAge && maxAge) {
-//     filters.age = {
-//       gte: Number(minAge), // Greater than or equal to minAge
-//       lte: Number(maxAge), // Less than or equal to maxAge
-//     };
-//   } else if (minAge) {
-//     filters.age = {
-//       gte: Number(minAge),
-//     };
-//   } else if (maxAge) {
-//     filters.age = {
-//       lte: Number(maxAge),
-//     };
-//   }
-//
-//   if (nationality) {
-//     filters.nationality = {
-//       contains: nationality,
-//       mode: "insensitive", // Case-insensitive filter
-//     };
-//   }
-//
-//   if (availability !== undefined) {
-//     filters.availability = availability === 'true'; // Convert to boolean
-//   }
-//
-//   // Step 3: Calculate pagination details
-//   const take = Number(limit); // Number of records per page
-//   const skip = (Number(page) - 1) * take; // Offset for pagination
-//
-//   // Step 4: Fetch total count of filtered helpers
-//   const totalHelpers = await prisma.maid.count({
-//     where: filters, // Apply filters here
-//   });
-//
-//   // Step 5: Fetch filtered and paginated helpers
-//   const helpers = await prisma.maid.findMany({
-//     where: filters, // Apply filters here
-//     skip: skip,
-//     take: take,
-//   });
-//
-//   // Step 6: Prepare meta data
-//   const meta = {
-//     total: totalHelpers,
-//     limit: take,
-//     page: Number(page),
-//     totalPages: Math.ceil(totalHelpers / take),
-//   };
-//
-//   // Step 7: Return result with meta data
-//   return {
-//     meta,
-//     data: helpers,
-//   };
-// };
+
+const getAllHelpers = async (query: any) => {
+  const { limit = 10, page = 1, minAge, maxAge, experience, serviceId, availability, name, email } = query;
+
+  // Step 1: Validate if the user exists
+  // const user = await prisma.user.findUnique({
+  //   where: {
+  //     id: userId,
+  //   },
+  // });
+  //
+  // if (!user) {
+  //   throw new AppError(400, 'User does not exist');
+  // }
+
+  // Step 2: Build dynamic filters based on query parameters
+  const filters: any = {};
+
+  if (name) {
+    filters.name = {
+      contains: name,
+      mode: 'insensitive'
+    };
+  }
+
+  if (email) {
+    filters.email = {
+      contains: email,
+      mode: 'insensitive'
+    };
+  }
+
+  if (minAge && maxAge) {
+    filters.age = {
+      gte: Number(minAge), // Greater than or equal to minAge
+      lte: Number(maxAge), // Less than or equal to maxAge
+    };
+  } else if (minAge) {
+    filters.age = {
+      gte: Number(minAge),
+    };
+  } else if (maxAge) {
+    filters.age = {
+      lte: Number(maxAge),
+    };
+  }
+
+  if (experience) {
+    filters.experience = {
+      gte: Number(experience),
+    };
+  }
+
+  if (serviceId) {
+    filters.serviceId = serviceId
+  }
+
+  if (availability !== undefined) {
+    filters.availability = availability.toString() === 'true'; // Convert to boolean
+  }
+
+  // Step 3: Calculate pagination details
+  const take = Number(limit); // Number of records per page
+  const skip = (Number(page) - 1) * take; // Offset for pagination
+
+  // Step 4: Fetch total count of filtered helpers
+  const totalHelpers = await prisma.maid.count({
+    where: filters, // Apply filters here
+  });
+
+  // Step 5: Fetch filtered and paginated helpers
+  const helpers = await prisma.maid.findMany({
+    where: filters, // Apply filters here
+    skip: skip,
+    take: take,
+  });
+
+  // Step 6: Prepare meta data
+  const meta = {
+    total: totalHelpers,
+    limit: take,
+    page: Number(page),
+    totalPages: Math.ceil(totalHelpers / take),
+  };
+
+  // Step 7: Return result with meta data
+  return {
+    meta,
+    data: helpers,
+  };
+};
 //
 // const addHelperToFavorites = async (userId: string, maidId: string) => {
 //   // Step 1: Validate if the user exists and has the role of an employer
@@ -254,7 +277,7 @@ const bulkCreateHelpers = async (helpers: any[]) => {
 
 export const HelperServices = {
   createHelper,
-  bulkCreateHelpers
-  // getAllHelpers,
+  bulkCreateHelpers,
+  getAllHelpers,
   // addHelperToFavorites
 };

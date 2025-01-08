@@ -79,7 +79,9 @@ const createHelpers = catchAsync(async (req: Request, res) => {
       !helper.email ||
       !helper.age ||
       !helper.experience ||
-      !helper.serviceName
+      !helper.serviceName ||
+      !helper.photo ||
+      !helper.biodataUrl
     ) {
       errors.push(`Row ${i + 1} is missing required fields.`);
       continue;
@@ -97,16 +99,16 @@ const createHelpers = catchAsync(async (req: Request, res) => {
   });
 });
 
-// const getAllHelpers = catchAsync(async (req, res) => {
-//   const userId = req.user.id;
-//   const result = await HelperServices.getAllHelpers(userId,req.query);
-//
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     message: 'helpers retrieved successfully',
-//     data: result,
-//   });
-// });
+const getAllHelpers = catchAsync(async (req, res) => {
+  const userId = req.user.id;
+  const result = await HelperServices.getAllHelpers(req.query);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    message: 'helpers retrieved successfully',
+    data: result,
+  });
+});
 //
 // const addHelperToFavorites = catchAsync(async (req, res) => {
 //   const userId = req.user.id;
@@ -121,7 +123,7 @@ const createHelpers = catchAsync(async (req: Request, res) => {
 
 export const HelperControllers = {
   createHelper,
-  createHelpers
-  // getAllHelpers,
+  createHelpers,
+  getAllHelpers,
   // addHelperToFavorites
 };

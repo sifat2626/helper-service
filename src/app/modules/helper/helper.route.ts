@@ -18,11 +18,11 @@ router.post(
 
 router.post("/upload-helper",auth(UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),uploadMiddleware,HelperControllers.createHelpers)
 
-// router.get(
-//   "/",
-//   auth(UserRoleEnum.USER,UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),
-//   HelperControllers.getAllHelpers
-// );
+router.get(
+  "/",
+  auth(UserRoleEnum.USER,UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),
+  HelperControllers.getAllHelpers
+);
 //
 // router.post('/favorites/add/:maidId',auth(UserRoleEnum.USER),HelperControllers.addHelperToFavorites)
 
