@@ -36,15 +36,10 @@ router.put(
   uploadMultipleMiddleware,
   HelperControllers.updateHelper
 );
-//
-// router.get(
-//   "/:id",
-//   validate(helperValidation.getHelperById),
-//   HelperControllers.getHelperById
-// );
-//
+
 router.delete(
   "/:id",
+  auth(UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),
   HelperControllers.deleteHelper
 );
 
