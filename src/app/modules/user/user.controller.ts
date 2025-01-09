@@ -44,39 +44,6 @@ const getSingleUser = catchAsync(async (req, res) => {
     data: result,
   });
 });
-//
-// const getUserDetails = catchAsync(async (req, res) => {
-//   const { id } = req.params;
-//   const result = await UserServices.getUserDetailsFromDB(id);
-//
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     message: 'User details retrieved successfully',
-//     data: result,
-//   });
-// });
-//
-// const updateMyProfile = catchAsync(async (req, res) => {
-//   const id = req.user.id;
-//   const result = await UserServices.updateMyProfileIntoDB(id, req.body);
-//
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     message: 'User profile updated successfully',
-//     data: result,
-//   });
-// });
-//
-// const updateUserRoleStatus = catchAsync(async (req, res) => {
-//   const { id } = req.params;
-//   const result = await UserServices.updateUserRoleStatusIntoDB(id, req.body);
-//
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     message: 'User updated successfully',
-//     data: result,
-//   });
-// });
 
 const changePassword = catchAsync(async (req, res) => {
   const user = req.user;
@@ -101,13 +68,35 @@ const changeRole = catchAsync(async (req, res) => {
   });
 })
 
+const sendOtpForPasswordReset = catchAsync(async (req, res) => {
+  const { email } = req.body;
+  const result = await UserServices.sendOtpForPasswordReset(email);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: result,
+  });
+});
+
+const verifyOtpAndResetPassword = catchAsync(async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  const result = await UserServices.verifyOtpAndResetPassword(email, otp, newPassword);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: result,
+  });
+});
+
 export const UserControllers = {
   registerUser,
   getAllUsers,
   getMyProfile,
   getSingleUser,
-  // updateMyProfile,
-  // updateUserRoleStatus,
   changePassword,
-  changeRole
+  changeRole,
+  sendOtpForPasswordReset,
+  verifyOtpAndResetPassword
 };

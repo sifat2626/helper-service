@@ -2,6 +2,7 @@ import { User, UserRoleEnum } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import prisma from '../../utils/prisma';
 import AppError from '../../errors/AppError';
+import { sendEmail } from '../../utils/sendEmail';
 
 interface UserWithOptionalPassword extends Omit<User, 'password'> {
   password?: string;
@@ -74,41 +75,6 @@ const getSingleUser = async (id: string) => {
   return user;
 }
 //
-// const getMyProfileFromDB = async (id: string) => {
-//   const Profile = await prisma.user.findUniqueOrThrow({
-//     where: {
-//       id: id,
-//     },
-//     select: {
-//       id: true,
-//       name: true,
-//       email: true,
-//       role: true,
-//       createdAt: true,
-//       updatedAt: true,
-//       profile: true,
-//     },
-//   });
-//
-//   return Profile;
-// };
-//
-// const getUserDetailsFromDB = async (id: string) => {
-//   const user = await prisma.user.findUniqueOrThrow({
-//     where: { id },
-//     select: {
-//       id: true,
-//       name: true,
-//       email: true,
-//       role: true,
-//       createdAt: true,
-//       updatedAt: true,
-//       profile: true,
-//     },
-//   });
-//   return user;
-// };
-//
 // const updateMyProfileIntoDB = async (id: string, payload: any) => {
 //   const userProfileData = payload.Profile;
 //   delete payload.Profile;
@@ -144,16 +110,7 @@ const getSingleUser = async (id: string) => {
 //   return userWithOptionalPassword;
 // };
 //
-// const updateUserRoleStatusIntoDB = async (id: string, payload: any) => {
-//   const result = await prisma.user.update({
-//     where: {
-//       id: id,
-//     },
-//     data: payload,
-//   });
-//   return result;
-// };
-//
+
 const changePassword = async (user: any, payload: any) => {
   const userData = await prisma.user.findUniqueOrThrow({
     where: {
@@ -251,14 +208,70 @@ const changeRole = async (
   );
 };
 
+const sendOtpForPasswordReset = async (email: string)=> {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    throw new AppError(404, 'User with this email does not exist');
+  }
+
+  // Generate a 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Hash the OTP
+  const hashedOtp = await bcrypt.hash(otp, 10);
+
+  // Set OTP expiration (e.g., 10 minutes)
+  const expiresAt = new Date(Date.now() + 2 * 60 * 1000);
+
+  // Save OTP in the database
+  await prisma.passwordReset.upsert({
+    where: { email },
+    update: { otp: hashedOtp, expiresAt },
+    create: { email, otp: hashedOtp, expiresAt },
+  });
+
+  // Send OTP via email
+  await sendEmail(email, 'Password Reset OTP', `Your OTP is ${otp}. It is valid for 2 minutes.`);
+
+  return { message: 'OTP sent to your email' };
+}
+
+const verifyOtpAndResetPassword = async (email: string, otp: string, newPassword: string)=> {
+  const passwordReset = await prisma.passwordReset.findUnique({ where: { email } });
+  if (!passwordReset) {
+    throw new AppError(400, 'Invalid or expired OTP');
+  }
+
+  // Check if the OTP is expired
+  if (passwordReset.expiresAt < new Date()) {
+    throw new AppError(400, 'OTP has expired');
+  }
+
+  // Verify the OTP
+  const isOtpValid = await bcrypt.compare(otp, passwordReset.otp);
+  if (!isOtpValid) {
+    throw new AppError(400, 'Invalid OTP');
+  }
+
+  // Update the user's password
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({
+    where: { email },
+    data: { password: hashedPassword },
+  });
+
+  // Delete the OTP record after successful password reset
+  await prisma.passwordReset.delete({ where: { email } });
+
+  return { message: 'Password reset successfully' };
+}
+
 export const UserServices = {
   registerUserIntoDB,
   getAllUsersFromDB,
   getSingleUser,
-  // getMyProfileFromDB,
-  // getUserDetailsFromDB,
-  // updateMyProfileIntoDB,
-  // updateUserRoleStatusIntoDB,
   changePassword,
   changeRole,
+  sendOtpForPasswordReset,
+  verifyOtpAndResetPassword
 };

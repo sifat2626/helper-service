@@ -9,4 +9,7 @@ const router = express.Router()
 router.post("/",auth(UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),validateRequest(ServiceValidation.createServiceValidation),ServiceControllers.createService)
 router.get("/",ServiceControllers.getAllServices)
 
+router.put('/:id',auth(UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN), ServiceControllers.updateService); // Update service
+router.delete('/:id',auth(UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN), ServiceControllers.deleteService); // Delete service
+
 export const ServiceRoutes = router

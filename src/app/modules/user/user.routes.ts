@@ -19,23 +19,17 @@ router.get(
   UserControllers.getAllUsers,
 );
 
-router.get('/me', auth(UserRoleEnum.USER), UserControllers.getMyProfile);
+router.get('/me', auth(UserRoleEnum.USER,UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN), UserControllers.getMyProfile);
 
 router.get(
   '/:id',
   auth(UserRoleEnum.ADMIN, UserRoleEnum.SUPERADMIN),
   UserControllers.getSingleUser,
 );
-// router.put(
-//   '/update-profile',
-//   auth('USER', 'ADMIN'),
-//   UserControllers.updateMyProfile,
-// );
-//
 
 router.post(
   '/change-password',
-  auth(UserRoleEnum.USER),
+  auth(UserRoleEnum.USER,UserRoleEnum.SUPERADMIN,UserRoleEnum.ADMIN),
   UserControllers.changePassword,
 );
 

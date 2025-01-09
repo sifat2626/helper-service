@@ -21,8 +21,35 @@ const getAllServices = catchAsync(async (req, res) => {
   })
 })
 
+const updateService = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+
+  const result = await Services.updateService(id, name);
+
+  sendResponse(res, {
+    statusCode: 200,
+    message: 'Service updated successfully',
+    data: result,
+  });
+});
+
+const deleteService = catchAsync(async (req, res) => {
+  const { id } = req.params;
+
+  const result = await Services.deleteService(id);
+
+  sendResponse(res, {
+    statusCode: 200,
+    message: result.message,
+    data: result,
+  });
+});
+
 
 export const ServiceControllers = {
   createService,
-  getAllServices
+  getAllServices,
+  updateService,
+  deleteService
 }

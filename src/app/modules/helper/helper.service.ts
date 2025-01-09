@@ -387,6 +387,10 @@ const bookHelper = async (userId: string, maidId: string) => {
         },
         date: new Date(),
       },
+      // include:{
+      //   maid:true,
+      //   user:true
+      // }
     });
 
     // Set maid's availability to false
