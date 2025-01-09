@@ -114,12 +114,32 @@ const getAllHelpers = catchAsync(async (req, res) => {
 const updateHelper = catchAsync(async (req: Request, res) => {
   const { id } = req.params;
 
-  const helperData = JSON.parse(req.body.data);
+  // Validate and parse `req.body.data`
+  if (!req.body.data) {
+    throw new AppError(400, 'Data field is required.');
+  }
+
+  let helperData;
+  try {
+    helperData = JSON.parse(req.body.data);
+  } catch (error) {
+    throw new AppError(400, 'Invalid JSON format for data field.');
+  }
 
   // Files from the request
   const photo = req.files?.image?.[0];
   const biodata = req.files?.pdf?.[0];
 
+  // Validate file types
+  if (photo && !photo.mimetype.startsWith('image/')) {
+    throw new AppError(400, 'Invalid file type for photo. Only images are allowed.');
+  }
+
+  if (biodata && biodata.mimetype !== 'application/pdf') {
+    throw new AppError(400, 'Invalid file type for biodata. Only PDF files are allowed.');
+  }
+
+  // Call the service to update the helper
   const result = await HelperServices.updateHelper(id, helperData, photo, biodata);
 
   sendResponse(res, {
@@ -128,6 +148,7 @@ const updateHelper = catchAsync(async (req: Request, res) => {
     data: result,
   });
 });
+
 
 
 const deleteHelper = catchAsync(async (req: Request, res) => {

@@ -230,37 +230,78 @@ const updateHelper = async (
   photo?: Express.Multer.File,
   biodata?: Express.Multer.File,
 ) => {
-  // Find the helper to update
+  // Check if the helper exists
   const existingHelper = await prisma.maid.findUnique({
     where: { id },
   });
 
   if (!existingHelper) {
-    throw new Error('Helper not found.');
+    throw new AppError(404, 'Helper not found.');
   }
 
-  // Upload new photo or keep the existing one
+  // Handle service validation
+  let serviceId = existingHelper.serviceId; // Default to current serviceId
+  if (helperData.serviceName) {
+    const service = await prisma.service.findUnique({
+      where: { name: helperData.serviceName },
+    });
+
+    if (!service) {
+      // Create a new service if not found
+      const newService = await prisma.service.create({
+        data: { name: helperData.serviceName },
+      });
+      serviceId = newService.id;
+    } else {
+      serviceId = service.id;
+    }
+  }
+
   const photoUrl = photo
     ? await uploadFileToDigitalOcean(photo, 'maids/photos')
-    : existingHelper.photo;
+    : existingHelper.photo; // Retain the existing photo URL if no new file
 
-  // Upload new biodata or keep the existing one
+  // Handle biodata upload
   const biodataUrl = biodata
     ? await uploadFileToDigitalOcean(biodata, 'maids/biodatas')
-    : existingHelper.biodataUrl;
+    : existingHelper.biodataUrl; // Retain the existing biodata URL if no new file
 
-  // Update the helper
+  const updatedHelperdata:any = {}
+
+  if(helperData.name){
+    updatedHelperdata.name = helperData.name;
+  }
+
+  if(helperData.email){
+    updatedHelperdata.email = helperData.email;
+  }
+
+  if(helperData.serviceName){
+    updatedHelperdata.serviceId = serviceId;
+  }
+
+  if(photoUrl){
+    updatedHelperdata.photo = photoUrl;
+  }
+
+  if (biodataUrl){
+    updatedHelperdata.biodataUrl = biodataUrl;
+  }
+
+  if(helperData.availability){
+    updatedHelperdata.availability = helperData.availability;
+  }
+
+  // Update the helper data
   const updatedHelper = await prisma.maid.update({
     where: { id },
     data: {
-      ...helperData,
-      photo: photoUrl,
-      biodataUrl,
+      ...updatedHelperdata,
     },
   });
 
   return updatedHelper;
-};
+}
 
 const deleteHelper = async (id: string) => {
   const referencingModels = [

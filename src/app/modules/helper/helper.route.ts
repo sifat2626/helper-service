@@ -30,11 +30,12 @@ router.post('/favorites/remove/:maidId',auth(UserRoleEnum.USER),HelperController
 
 router.post('/book/:maidId',auth(UserRoleEnum.USER),HelperControllers.bookHelper)
 
-// router.put(
-//   "/:id",
-//   validate(helperValidation.updateHelper),
-//   HelperControllers.updateHelper
-// );
+router.put(
+  "/:id",
+  auth(UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),
+  uploadMultipleMiddleware,
+  HelperControllers.updateHelper
+);
 //
 // router.get(
 //   "/:id",
