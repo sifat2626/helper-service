@@ -1,7 +1,7 @@
 import prisma from '../../utils/prisma';
 import { Services } from '../service/service.service';
 import { TService } from '../service/service.interface';
-import { uploadFileToCloudinary } from '../../utils/uploadToCloudinary';
+import { uploadFileToDigitalOcean } from '../../utils/uploadToDigitalOcean';
 import { isDataReferenced } from '../../utils/checkReference';
 import AppError from '../../errors/AppError';
 import { UserRoleEnum } from '@prisma/client';
@@ -32,11 +32,11 @@ export const createHelper = async (
     let biodataUrl = '';
 
     if (photo) {
-      photoUrl = await uploadFileToCloudinary(photo, 'maids/photos');
+      photoUrl = await uploadFileToDigitalOcean(photo, 'maids/photos');
     }
 
     if (biodata) {
-      biodataUrl = await uploadFileToCloudinary(biodata, 'maids/biodatas');
+      biodataUrl = await uploadFileToDigitalOcean(biodata, 'maids/biodatas');
     }
 
     const maid = await prisma.maid.create({
@@ -241,12 +241,12 @@ const updateHelper = async (
 
   // Upload new photo or keep the existing one
   const photoUrl = photo
-    ? await uploadFileToCloudinary(photo, 'maids/photos')
+    ? await uploadFileToDigitalOcean(photo, 'maids/photos')
     : existingHelper.photo;
 
   // Upload new biodata or keep the existing one
   const biodataUrl = biodata
-    ? await uploadFileToCloudinary(biodata, 'maids/biodatas')
+    ? await uploadFileToDigitalOcean(biodata, 'maids/biodatas')
     : existingHelper.biodataUrl;
 
   // Update the helper
@@ -323,6 +323,37 @@ const addHelperToFavorites = async (userId: string, maidId: string) => {
     },
   });
 };
+
+const removeHelperFromFavorites = async (userId: string, maidId: string) => {
+  const maid = await prisma.maid.findUnique({
+    where: {
+      id: maidId,
+    },
+  });
+
+  if (!maid) {
+    throw new AppError(400, 'Sorry! Maid not found');
+  }
+
+  const existingFavorite = await prisma.favorite.findFirst({
+    where: {
+      userId: userId,
+      maidId: maidId,
+    },
+  });
+
+  if(!existingFavorite) {
+    throw new AppError(400, 'This maid is not in your favorites.');
+  }
+
+  const result = await prisma.favorite.delete({
+    where:{
+     id:existingFavorite.id
+    }
+  })
+
+  return result
+}
 
 const bookHelper = async (userId: string, maidId: string) => {
   return prisma.$transaction(async prisma => {
@@ -405,5 +436,6 @@ export const HelperServices = {
   updateHelper,
   deleteHelper,
   addHelperToFavorites,
+  removeHelperFromFavorites,
   bookHelper
 };

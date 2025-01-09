@@ -3,7 +3,6 @@ import express, { Application, NextFunction, Request, Response } from "express";
 import httpStatus from "http-status";
 import globalErrorHandler from "./app/middlewares/globalErrorHandler";
 import router from "./app/routes";
-import { v2 as cloudinary } from 'cloudinary';
 import config from './config';
 
 const app: Application = express();
@@ -17,11 +16,6 @@ app.use(
   })
 );
 
-cloudinary.config({
-  cloud_name: config.cloud_name, // Cloud name from your Cloudinary account
-  api_key: config.api_key,       // API key from your Cloudinary account
-  api_secret: config.api_secret, // API secret from your Cloudinary account
-});
 
 //parser
 app.use(express.json());

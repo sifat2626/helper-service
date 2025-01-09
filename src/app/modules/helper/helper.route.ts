@@ -25,6 +25,9 @@ router.get(
 );
 //
 router.post('/favorites/add/:maidId',auth(UserRoleEnum.USER),HelperControllers.addHelperToFavorites)
+
+router.post('/favorites/remove/:maidId',auth(UserRoleEnum.USER),HelperControllers.removeHelperFromFavorites)
+
 router.post('/book/:maidId',auth(UserRoleEnum.USER),HelperControllers.bookHelper)
 
 // router.put(

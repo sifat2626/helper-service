@@ -151,6 +151,17 @@ const addHelperToFavorites = catchAsync(async (req, res) => {
   })
 })
 
+const removeHelperFromFavorites = catchAsync(async (req: Request, res) => {
+  const userId = req.user.id;
+  const maidId = req.params.maidId;
+  const result = await HelperServices.removeHelperFromFavorites(userId,maidId)
+  sendResponse(res, {
+    statusCode:201,
+    message:'removed from favorites',
+    data: result,
+  })
+})
+
 const bookHelper = catchAsync(async (req: Request, res) => {
   const userId = req.user.id;
   const maidId = req.params.maidId;
@@ -169,5 +180,6 @@ export const HelperControllers = {
   updateHelper,
   deleteHelper,
   addHelperToFavorites,
+  removeHelperFromFavorites,
   bookHelper
 };

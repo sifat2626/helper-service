@@ -8,11 +8,13 @@ export default {
   port: process.env.PORT,
   super_admin_password: process.env.SUPER_ADMIN_PASSWORD,
   bcrypt_salt_rounds: process.env.BCRYPT_SALT_ROUNDS,
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
   sender_email:process.env.SenderEmail,
   sender_pass:process.env.SenderPass,
+
+  DO_SPACE_ENDPOINT: process.env.DO_SPACE_ENDPOINT,
+  DO_SPACE_ACCESS_KEY: process.env.DO_SPACE_ACCESS_KEY,
+  DO_SPACE_SECRET_KEY: process.env.DO_SPACE_SECRET_KEY,
+  DO_SPACE_BUCKET: process.env.DO_SPACE_BUCKET,
 
   jwt: {
     access_secret: process.env.JWT_ACCESS_SECRET,

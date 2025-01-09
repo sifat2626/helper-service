@@ -40,7 +40,7 @@ const registerUserIntoDB = async (payload: any) => {
   return createdUser;
 };
 
-const getAllUsersFromDB = async (filter:any) => {
+const getAllUsersFromDB = async () => {
 
   const result = await prisma.user.findMany({
     select: {
@@ -56,6 +56,23 @@ const getAllUsersFromDB = async (filter:any) => {
 
   return result;
 };
+
+const getSingleUser = async (id: string) => {
+  const user = await prisma.user.findUnique({
+    where:{
+      id: id,
+    },
+    include: {
+      favorites:true
+    }
+  })
+
+  if (!user) {
+    throw new AppError(400, 'User not found');
+  }
+
+  return user;
+}
 //
 // const getMyProfileFromDB = async (id: string) => {
 //   const Profile = await prisma.user.findUniqueOrThrow({
@@ -137,38 +154,37 @@ const getAllUsersFromDB = async (filter:any) => {
 //   return result;
 // };
 //
-// const changePassword = async (user: any, payload: any) => {
-//   const userData = await prisma.user.findUniqueOrThrow({
-//     where: {
-//       email: user.email,
-//       status: 'ACTIVATE',
-//     },
-//   });
-//
-//   const isCorrectPassword: boolean = await bcrypt.compare(
-//     payload.oldPassword,
-//     userData.password,
-//   );
-//
-//   if (!isCorrectPassword) {
-//     throw new Error('Password incorrect!');
-//   }
-//
-//   const hashedPassword: string = await bcrypt.hash(payload.newPassword, 12);
-//
-//   await prisma.user.update({
-//     where: {
-//       id: userData.id,
-//     },
-//     data: {
-//       password: hashedPassword,
-//     },
-//   });
-//
-//   return {
-//     message: 'Password changed successfully!',
-//   };
-// };
+const changePassword = async (user: any, payload: any) => {
+  const userData = await prisma.user.findUniqueOrThrow({
+    where: {
+      email: user.email,
+    },
+  });
+
+  const isCorrectPassword: boolean = await bcrypt.compare(
+    payload.oldPassword,
+    userData.password,
+  );
+
+  if (!isCorrectPassword) {
+    throw new Error('Password incorrect!');
+  }
+
+  const hashedPassword: string = await bcrypt.hash(payload.newPassword, 12);
+
+  await prisma.user.update({
+    where: {
+      id: userData.id,
+    },
+    data: {
+      password: hashedPassword,
+    },
+  });
+
+  return {
+    message: 'Password changed successfully!',
+  };
+};
 
 const changeRole = async (
   userId: string,
@@ -237,11 +253,12 @@ const changeRole = async (
 
 export const UserServices = {
   registerUserIntoDB,
-  // getAllUsersFromDB,
+  getAllUsersFromDB,
+  getSingleUser,
   // getMyProfileFromDB,
   // getUserDetailsFromDB,
   // updateMyProfileIntoDB,
   // updateUserRoleStatusIntoDB,
-  // changePassword,
+  changePassword,
   changeRole,
 };
