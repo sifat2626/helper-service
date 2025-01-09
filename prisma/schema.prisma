@@ -28,6 +28,7 @@ model PasswordReset {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique
   otp       String
+  isUsed    Boolean
   expiresAt DateTime
   createdAt DateTime @default(now())
 

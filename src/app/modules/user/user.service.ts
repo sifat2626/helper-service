@@ -208,7 +208,7 @@ const changeRole = async (
   );
 };
 
-const sendOtpForPasswordReset = async (email: string)=> {
+const sendOtpForPasswordReset = async (email: string) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
     throw new AppError(404, 'User with this email does not exist');
@@ -220,14 +220,14 @@ const sendOtpForPasswordReset = async (email: string)=> {
   // Hash the OTP
   const hashedOtp = await bcrypt.hash(otp, 10);
 
-  // Set OTP expiration (e.g., 10 minutes)
+  // Set OTP expiration (e.g., 2 minutes)
   const expiresAt = new Date(Date.now() + 2 * 60 * 1000);
 
   // Save OTP in the database
   await prisma.passwordReset.upsert({
     where: { email },
-    update: { otp: hashedOtp, expiresAt },
-    create: { email, otp: hashedOtp, expiresAt },
+    update: { otp: hashedOtp, expiresAt, isUsed: false }, // ensure OTP is not used
+    create: { email, otp: hashedOtp, expiresAt, isUsed: false }, // ensure OTP is not used
   });
 
   // Send OTP via email
@@ -236,7 +236,8 @@ const sendOtpForPasswordReset = async (email: string)=> {
   return { message: 'OTP sent to your email' };
 }
 
-const verifyOtpAndResetPassword = async (email: string, otp: string, newPassword: string)=> {
+
+const verifyOtpAndResetPassword = async (email: string, otp: string, newPassword: string) => {
   const passwordReset = await prisma.passwordReset.findUnique({ where: { email } });
   if (!passwordReset) {
     throw new AppError(400, 'Invalid or expired OTP');
@@ -245,6 +246,11 @@ const verifyOtpAndResetPassword = async (email: string, otp: string, newPassword
   // Check if the OTP is expired
   if (passwordReset.expiresAt < new Date()) {
     throw new AppError(400, 'OTP has expired');
+  }
+
+  // Check if the OTP has already been used
+  if (passwordReset.isUsed) {
+    throw new AppError(400, 'OTP has already been used');
   }
 
   // Verify the OTP
@@ -260,11 +266,18 @@ const verifyOtpAndResetPassword = async (email: string, otp: string, newPassword
     data: { password: hashedPassword },
   });
 
+  // Mark OTP as used
+  await prisma.passwordReset.update({
+    where: { email },
+    data: { isUsed: true },
+  });
+
   // Delete the OTP record after successful password reset
   await prisma.passwordReset.delete({ where: { email } });
 
   return { message: 'Password reset successfully' };
 }
+
 
 export const UserServices = {
   registerUserIntoDB,

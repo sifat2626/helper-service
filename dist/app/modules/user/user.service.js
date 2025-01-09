@@ -213,13 +213,13 @@ const sendOtpForPasswordReset = (email) => __awaiter(void 0, void 0, void 0, fun
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     // Hash the OTP
     const hashedOtp = yield bcrypt.hash(otp, 10);
-    // Set OTP expiration (e.g., 10 minutes)
+    // Set OTP expiration (e.g., 2 minutes)
     const expiresAt = new Date(Date.now() + 2 * 60 * 1000);
     // Save OTP in the database
     yield prisma_1.default.passwordReset.upsert({
         where: { email },
-        update: { otp: hashedOtp, expiresAt },
-        create: { email, otp: hashedOtp, expiresAt },
+        update: { otp: hashedOtp, expiresAt, isUsed: false }, // ensure OTP is not used
+        create: { email, otp: hashedOtp, expiresAt, isUsed: false }, // ensure OTP is not used
     });
     // Send OTP via email
     yield (0, sendEmail_1.sendEmail)(email, 'Password Reset OTP', `Your OTP is ${otp}. It is valid for 2 minutes.`);
@@ -234,6 +234,10 @@ const verifyOtpAndResetPassword = (email, otp, newPassword) => __awaiter(void 0,
     if (passwordReset.expiresAt < new Date()) {
         throw new AppError_1.default(400, 'OTP has expired');
     }
+    // Check if the OTP has already been used
+    if (passwordReset.isUsed) {
+        throw new AppError_1.default(400, 'OTP has already been used');
+    }
     // Verify the OTP
     const isOtpValid = yield bcrypt.compare(otp, passwordReset.otp);
     if (!isOtpValid) {
@@ -244,6 +248,11 @@ const verifyOtpAndResetPassword = (email, otp, newPassword) => __awaiter(void 0,
     yield prisma_1.default.user.update({
         where: { email },
         data: { password: hashedPassword },
+    });
+    // Mark OTP as used
+    yield prisma_1.default.passwordReset.update({
+        where: { email },
+        data: { isUsed: true },
     });
     // Delete the OTP record after successful password reset
     yield prisma_1.default.passwordReset.delete({ where: { email } });
