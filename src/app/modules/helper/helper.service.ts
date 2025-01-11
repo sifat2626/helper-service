@@ -7,56 +7,54 @@ import AppError from '../../errors/AppError';
 import { UserRoleEnum } from '@prisma/client';
 import { sendEmail } from '../../utils/sendEmail';
 
-export const createHelper = async (
+const createHelper = async (
   helperData: TService,
   photo: Express.Multer.File,
   biodata?: Express.Multer.File,
 ) => {
-  // Start a Prisma transaction
-  const result = await prisma.$transaction(async prisma => {
-    const existingMaid = await prisma.maid.findUnique({
-      where: { email: helperData.email },
-    });
+  // Step 1: Handle photo and biodata uploads
+  const photoUrl = photo ? await uploadFileToDigitalOcean(photo, 'maids/photos') : '';
+  const biodataUrl = biodata ? await uploadFileToDigitalOcean(biodata, 'maids/biodatas') : '';
 
-    if (existingMaid) {
-      throw new Error('A maid with this email already exists.');
-    }
-
-    let serviceId = await Services.getServiceIdByName(helperData.serviceName);
-    if (!serviceId) {
-      const service = await Services.createService(helperData.serviceName);
-      serviceId = service.id;
-    }
-
-    let photoUrl = '';
-    let biodataUrl = '';
-
-    if (photo) {
-      photoUrl = await uploadFileToDigitalOcean(photo, 'maids/photos');
-    }
-
-    if (biodata) {
-      biodataUrl = await uploadFileToDigitalOcean(biodata, 'maids/biodatas');
-    }
-
-    const maid = await prisma.maid.create({
-      data: {
-        name: helperData.name,
-        email: helperData.email,
-        age: helperData.age,
-        experience: helperData.experience,
-        serviceId,
-        photo: photoUrl,
-        biodataUrl,
-        availability: helperData.availability,
-      },
-    });
-
-    return maid;
+  // Step 2: Create the maid in a transaction
+  const maid = await prisma.maid.create({
+    data: {
+      name: helperData.name,
+      email: helperData.email,
+      age: helperData.age,
+      experience: helperData.experience,
+      photo: photoUrl,
+      biodataUrl,
+      availability: helperData.availability,
+    },
   });
 
-  return result;
+  const serviceNames =helperData.serviceNames.split(',')
+
+  // Step 3: Handle multiple services outside the transaction
+  if (helperData.serviceNames && helperData.serviceNames.length > 0) {
+    for (const serviceName of serviceNames) {
+      console.log('serviceName', serviceName);
+      // Find or create the service
+      const service = await prisma.service.upsert({
+        where: { name: serviceName },
+        update: {}, // No updates for existing service
+        create: { name: serviceName },
+      });
+
+      // Create the relation in `maidService`
+      await prisma.maidService.create({
+        data: {
+          maidId: maid.id,
+          serviceId: service.id,
+        },
+      });
+    }
+  }
+
+  return maid;
 };
+
 
 const bulkCreateHelpers = async (helpers: any[]) => {
   const errors: string[] = [];
@@ -64,59 +62,72 @@ const bulkCreateHelpers = async (helpers: any[]) => {
 
   for (const helper of helpers) {
     try {
-      // Check if the service exists
-      let service = await prisma.service.findUnique({
-        where: { name: helper.serviceName },
-      });
+      // Split the `serviceNames` string into an array using ';' as a delimiter
+      const serviceNames = helper.serviceNames
+        ? helper.serviceNames
+            .split(';')
+            .map((service: string) => service.trim())
+        : [];
 
-      // Create the service if it doesn't exist
-      if (!service) {
-        service = await prisma.service.create({
-          data: { name: helper.serviceName },
-        });
-      }
-
-      // Use upsert to either create or update the helper
-      const result = await prisma.maid.upsert({
+      const maid = await prisma.maid.upsert({
         where: { email: helper.email },
         update: {
           name: helper.name,
           age: Number(helper.age),
           experience: Number(helper.experience),
-          serviceId: service.id,
           availability: helper.availability.toString().toLowerCase() === 'true',
-          photo: helper.photo || '', // Default to empty string if not provided
-          biodataUrl: helper.biodataUrl || '', // Default to empty string if not provided
+          photo: helper.photo || '',
+          biodataUrl: helper.biodataUrl || '',
         },
         create: {
           name: helper.name,
           email: helper.email,
           age: Number(helper.age),
           experience: Number(helper.experience),
-          serviceId: service.id,
           availability: helper.availability.toString().toLowerCase() === 'true',
-          photo: helper.photo || '', // Default to empty string if not provided
-          biodataUrl: helper.biodataUrl || '', // Default to empty string if not provided
+          photo: helper.photo || '',
+          biodataUrl: helper.biodataUrl || '',
         },
       });
 
-      console.log(
-        result.email === helper.email
-          ? `Helper updated: ${result.name}`
-          : `Helper created: ${result.name}`,
-      );
-      successCount++; // Increment success count
+      // Iterate over the service names and associate them with the maid
+      for (const serviceName of serviceNames) {
+        let service = await prisma.service.findUnique({
+          where: { name: serviceName },
+        });
+
+        if (!service) {
+          service = await prisma.service.create({
+            data: { name: serviceName },
+          });
+        }
+
+        await prisma.maidService.upsert({
+          where: {
+            maidId_serviceId: {
+              maidId: maid.id,
+              serviceId: service.id,
+            },
+          },
+          update: {},
+          create: {
+            maidId: maid.id,
+            serviceId: service.id,
+          },
+        });
+      }
+
+      successCount++;
     } catch (error: any) {
-      // Handle individual helper error
       errors.push(
-        `Failed to insert or update helper with email ${helper.email}: ${error.message}`,
+        `Failed to process helper with email ${helper.email}: ${error.message}`,
       );
     }
   }
 
-  // Return the results
   return { successCount, errors };
 };
+
 
 const getAllHelpers = async (query: any) => {
   const {
@@ -125,25 +136,13 @@ const getAllHelpers = async (query: any) => {
     minAge,
     maxAge,
     experience,
-    serviceId,
+    serviceNames, // Array of service names to filter
     availability,
     name,
     id,
     email,
   } = query;
 
-  // Step 1: Validate if the user exists
-  // const user = await prisma.user.findUnique({
-  //   where: {
-  //     id: userId,
-  //   },
-  // });
-  //
-  // if (!user) {
-  //   throw new AppError(400, 'User does not exist');
-  // }
-
-  // Step 2: Build dynamic filters based on query parameters
   const filters: any = {};
 
   if (name) {
@@ -166,63 +165,84 @@ const getAllHelpers = async (query: any) => {
 
   if (minAge && maxAge) {
     filters.age = {
-      gte: Number(minAge), // Greater than or equal to minAge
-      lte: Number(maxAge), // Less than or equal to maxAge
-    };
-  } else if (minAge) {
-    filters.age = {
       gte: Number(minAge),
-    };
-  } else if (maxAge) {
-    filters.age = {
       lte: Number(maxAge),
     };
+  } else if (minAge) {
+    filters.age = { gte: Number(minAge) };
+  } else if (maxAge) {
+    filters.age = { lte: Number(maxAge) };
   }
 
   if (experience) {
-    filters.experience = {
-      gte: Number(experience),
-    };
-  }
-
-  if (serviceId) {
-    filters.serviceId = serviceId;
+    filters.experience = { gte: Number(experience) };
   }
 
   if (availability !== undefined) {
-    filters.availability = availability.toString() === 'true'; // Convert to boolean
+    filters.availability = availability.toString() === 'true';
   }
 
-  // Step 3: Calculate pagination details
-  const take = Number(limit); // Number of records per page
-  const skip = (Number(page) - 1) * take; // Offset for pagination
+  const take = Number(limit);
+  const skip = (Number(page) - 1) * take;
 
-  // Step 4: Fetch total count of filtered helpers
+  // Ensure serviceNames is an array
+  const parsedServiceNames = Array.isArray(serviceNames)
+    ? serviceNames
+    : typeof serviceNames === 'string'
+      ? JSON.parse(serviceNames) // Parse JSON string to array if passed as such
+      : [];
+
+  // If serviceNames is provided, filter to ensure the maid has all the specified services
+  const serviceFilter =
+    parsedServiceNames.length > 0
+      ? {
+          AND: parsedServiceNames.map((serviceName: any) => ({
+            MaidServices: {
+              some: {
+                Service: {
+                  name: {
+                    equals: serviceName,
+                    mode: 'insensitive',
+                  },
+                },
+              },
+            },
+          })),
+        }
+      : {};
+
+  // Merge service filter with other filters
+  const finalFilters = { ...filters, ...serviceFilter };
+
   const totalHelpers = await prisma.maid.count({
-    where: filters, // Apply filters here
+    where: finalFilters,
   });
 
-  // Step 5: Fetch filtered and paginated helpers
   const helpers = await prisma.maid.findMany({
-    where: filters, // Apply filters here
-    skip: skip,
-    take: take,
+    where: finalFilters,
+    skip,
+    take,
+    include: {
+      MaidServices: {
+        include: {
+          Service: true,
+        },
+      },
+    },
   });
 
-  // Step 6: Prepare meta data
-  const meta = {
-    total: totalHelpers,
-    limit: take,
-    page: Number(page),
-    totalPages: Math.ceil(totalHelpers / take),
-  };
-
-  // Step 7: Return result with meta data
   return {
-    meta,
+    meta: {
+      total: totalHelpers,
+      limit: take,
+      page: Number(page),
+      totalPages: Math.ceil(totalHelpers / take),
+    },
     data: helpers,
   };
 };
+
+
 
 const updateHelper = async (
   id: string,
@@ -233,75 +253,72 @@ const updateHelper = async (
   // Check if the helper exists
   const existingHelper = await prisma.maid.findUnique({
     where: { id },
+    include: {
+      MaidServices: true, // Include existing services for the helper
+    },
   });
 
   if (!existingHelper) {
     throw new AppError(404, 'Helper not found.');
   }
 
-  // Handle service validation
-  let serviceId = existingHelper.serviceId; // Default to current serviceId
-  if (helperData.serviceName) {
-    const service = await prisma.service.findUnique({
-      where: { name: helperData.serviceName },
-    });
-
-    if (!service) {
-      // Create a new service if not found
-      const newService = await prisma.service.create({
-        data: { name: helperData.serviceName },
-      });
-      serviceId = newService.id;
-    } else {
-      serviceId = service.id;
-    }
-  }
-
   const photoUrl = photo
     ? await uploadFileToDigitalOcean(photo, 'maids/photos')
     : existingHelper.photo; // Retain the existing photo URL if no new file
 
-  // Handle biodata upload
   const biodataUrl = biodata
     ? await uploadFileToDigitalOcean(biodata, 'maids/biodatas')
     : existingHelper.biodataUrl; // Retain the existing biodata URL if no new file
 
-  const updatedHelperdata:any = {}
-
-  if(helperData.name){
-    updatedHelperdata.name = helperData.name;
+  // Update basic fields
+  const updatedHelperData: any = {};
+  if (helperData.name) updatedHelperData.name = helperData.name;
+  if (helperData.email) updatedHelperData.email = helperData.email;
+  if (photoUrl) updatedHelperData.photo = photoUrl;
+  if (biodataUrl) updatedHelperData.biodataUrl = biodataUrl;
+  if (helperData.availability !== undefined) {
+    updatedHelperData.availability = helperData.availability;
   }
 
-  if(helperData.email){
-    updatedHelperdata.email = helperData.email;
-  }
-
-  if(helperData.serviceName){
-    updatedHelperdata.serviceId = serviceId;
-  }
-
-  if(photoUrl){
-    updatedHelperdata.photo = photoUrl;
-  }
-
-  if (biodataUrl){
-    updatedHelperdata.biodataUrl = biodataUrl;
-  }
-
-  if(helperData.availability){
-    updatedHelperdata.availability = helperData.availability;
-  }
-
-  // Update the helper data
+  // Update the helper record
   const updatedHelper = await prisma.maid.update({
     where: { id },
-    data: {
-      ...updatedHelperdata,
-    },
+    data: updatedHelperData,
   });
 
+  // Handle service updates
+  if (helperData.serviceNames && helperData.serviceNames.length > 0) {
+    // Clear existing services
+    await prisma.maidService.deleteMany({
+      where: { maidId: id },
+    });
+
+    // Add new services
+    for (const serviceName of helperData.serviceNames) {
+      let service = await prisma.service.findUnique({
+        where: { name: serviceName },
+      });
+
+      if (!service) {
+        // Create the service if it doesn't exist
+        service = await prisma.service.create({
+          data: { name: serviceName },
+        });
+      }
+
+      // Link the helper with the service
+      await prisma.maidService.create({
+        data: {
+          maidId: id,
+          serviceId: service.id,
+        },
+      });
+    }
+  }
+
   return updatedHelper;
-}
+};
+
 
 const deleteHelper = async (id: string) => {
   const referencingModels = [

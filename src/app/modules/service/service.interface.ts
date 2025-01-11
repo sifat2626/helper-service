@@ -3,7 +3,7 @@ export type TService = {
   email: string;
   age: number;
   experience: number;
-  serviceName: string;
+  serviceNames: string;
   photo?: string;
   biodataUrl?: string;
   availability: boolean;

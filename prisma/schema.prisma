@@ -41,8 +41,6 @@ model Maid {
   email        String   @unique
   age          Int
   experience   Int // Years of experience
-  service      Service  @relation(fields: [serviceId], references: [id])
-  serviceId    String   @db.ObjectId
   photo        String? // URL to the maid's photo
   biodataUrl   String? // URL to download PDF biodata
   availability Boolean  @default(true)
@@ -50,8 +48,9 @@ model Maid {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now())
 
-  Booking  Booking[]
-  Favorite Favorite[]
+  Booking      Booking[]
+  Favorite     Favorite[]
+  MaidServices MaidService[]
 
   @@map("maids")
 }
@@ -78,9 +77,20 @@ model Service {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
-  maids Maid[]
+  MaidServices MaidService[]
 
   @@map("services")
+}
+
+model MaidService {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  Maid      Maid?    @relation(fields: [maidId], references: [id])
+  maidId    String?  @db.ObjectId
+  Service   Service? @relation(fields: [serviceId], references: [id])
+  serviceId String?  @db.ObjectId
+
+  @@unique([maidId, serviceId])
+  @@map("maid_services")
 }
 
 model Favorite {
