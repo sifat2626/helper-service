@@ -1,5 +1,4 @@
 import prisma from '../../utils/prisma';
-import { Services } from '../service/service.service';
 import { TService } from '../service/service.interface';
 import { uploadFileToDigitalOcean } from '../../utils/uploadToDigitalOcean';
 import { isDataReferenced } from '../../utils/checkReference';
@@ -39,7 +38,7 @@ const createHelper = async (
       const service = await prisma.service.upsert({
         where: { name: serviceName },
         update: {}, // No updates for existing service
-        create: { name: serviceName },
+        create: { name: serviceName.toLowerCase() },
       });
 
       // Create the relation in `maidService`
@@ -61,13 +60,14 @@ const bulkCreateHelpers = async (helpers: any[]) => {
   let successCount = 0;
 
   for (const helper of helpers) {
+    console.log(helper);
     try {
       // Split the `serviceNames` string into an array using ';' as a delimiter
-      const serviceNames = helper.serviceNames
-        ? helper.serviceNames
-            .split(';')
-            .map((service: string) => service.trim())
-        : [];
+      const serviceNames:string[] = []
+      helper.serviceNames.map((serviceName:string)=>{
+        serviceNames.push(serviceName.trim().toLowerCase());
+      })
+
 
       const maid = await prisma.maid.upsert({
         where: { email: helper.email },
@@ -248,7 +248,7 @@ const updateHelper = async (
   id: string,
   helperData: Partial<TService>,
   photo?: Express.Multer.File,
-  biodata?: Express.Multer.File,
+  biodata?: Express.Multer.File
 ) => {
   // Check if the helper exists
   const existingHelper = await prisma.maid.findUnique({
@@ -293,20 +293,22 @@ const updateHelper = async (
       where: { maidId: id },
     });
 
-    // Add new services
-    for (const serviceName of helperData.serviceNames) {
+    const serviceNames = helperData.serviceNames.split(',')
+
+    // Process and associate new services
+    for (const serviceName of serviceNames) {
       let service = await prisma.service.findUnique({
-        where: { name: serviceName },
+        where: { name: serviceName.trim().toLowerCase() },
       });
 
       if (!service) {
         // Create the service if it doesn't exist
         service = await prisma.service.create({
-          data: { name: serviceName },
+          data: { name: serviceName.trim().toLowerCase() },
         });
       }
 
-      // Link the helper with the service
+      // Link the maid with the service
       await prisma.maidService.create({
         data: {
           maidId: id,
