@@ -21,6 +21,7 @@ const createHelper = async (
       name: helperData.name,
       email: helperData.email,
       age: helperData.age,
+      nationality: helperData.nationality,
       experience: helperData.experience,
       photo: photoUrl,
       biodataUrl,
@@ -74,6 +75,7 @@ const bulkCreateHelpers = async (helpers: any[]) => {
         update: {
           name: helper.name,
           age: Number(helper.age),
+          nationality: helper.nationality,
           experience: Number(helper.experience),
           availability: helper.availability.toString().toLowerCase() === 'true',
           photo: helper.photo || '',
@@ -135,6 +137,7 @@ const getAllHelpers = async (query: any) => {
     page = 1,
     minAge,
     maxAge,
+    nationality,
     experience,
     serviceNames, // Array of service names to filter
     availability,
@@ -172,6 +175,13 @@ const getAllHelpers = async (query: any) => {
     filters.age = { gte: Number(minAge) };
   } else if (maxAge) {
     filters.age = { lte: Number(maxAge) };
+  }
+
+  if(nationality) {
+    filters.nationality = {
+      contains: nationality,
+      mode: 'insensitive',
+    }
   }
 
   if (experience) {
@@ -274,6 +284,8 @@ const updateHelper = async (
   const updatedHelperData: any = {};
   if (helperData.name) updatedHelperData.name = helperData.name;
   if (helperData.email) updatedHelperData.email = helperData.email;
+  if (helperData.age) updatedHelperData.age = Number(helperData.age);
+  if (helperData.nationality) updatedHelperData.nationality = helperData.nationality;
   if (photoUrl) updatedHelperData.photo = photoUrl;
   if (biodataUrl) updatedHelperData.biodataUrl = biodataUrl;
   if (helperData.availability !== undefined) {
