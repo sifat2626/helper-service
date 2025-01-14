@@ -21,6 +21,7 @@ const createHelper = async (
       name: helperData.name,
       email: helperData.email,
       age: helperData.age,
+      workHistory:helperData.workHistory,
       nationality: helperData.nationality,
       experience: helperData.experience,
       photo: photoUrl,
@@ -75,6 +76,7 @@ const bulkCreateHelpers = async (helpers: any[]) => {
         update: {
           name: helper.name,
           age: Number(helper.age),
+          workHistory:helper.workHistory,
           nationality: helper.nationality,
           experience: Number(helper.experience),
           availability: helper.availability.toString().toLowerCase() === 'true',
@@ -85,6 +87,7 @@ const bulkCreateHelpers = async (helpers: any[]) => {
           name: helper.name,
           email: helper.email,
           age: Number(helper.age),
+          workHistory:helper.workHistory,
           experience: Number(helper.experience),
           availability: helper.availability.toString().toLowerCase() === 'true',
           photo: helper.photo || '',
@@ -285,6 +288,7 @@ const updateHelper = async (
   if (helperData.name) updatedHelperData.name = helperData.name;
   if (helperData.email) updatedHelperData.email = helperData.email;
   if (helperData.age) updatedHelperData.age = Number(helperData.age);
+  if (helperData.workHistory) updatedHelperData.workHistory = helperData.workHistory;
   if (helperData.nationality) updatedHelperData.nationality = helperData.nationality;
   if (photoUrl) updatedHelperData.photo = photoUrl;
   if (biodataUrl) updatedHelperData.biodataUrl = biodataUrl;

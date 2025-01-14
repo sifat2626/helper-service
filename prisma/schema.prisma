@@ -44,6 +44,7 @@ model Maid {
   experience   Int // Years of experience
   photo        String? // URL to the maid's photo
   biodataUrl   String? // URL to download PDF biodata
+  workHistory  String   @default("First Timer")
   availability Boolean  @default(true)
   rating       Float?   @default(0) // Default rating is 0, optional if not rated
   createdAt    DateTime @default(now())

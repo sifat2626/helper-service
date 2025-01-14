@@ -65,6 +65,8 @@ const createHelpers = catchAsync(async (req: Request, res) => {
       !helper.name ||
       !helper.email ||
       !helper.age ||
+      !helper.nationality ||
+      !helper.workHistory ||
       !helper.experience ||
       !helper.serviceNames
     ) {

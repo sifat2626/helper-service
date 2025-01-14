@@ -29,6 +29,7 @@ const createHelper = (helperData, photo, biodata) => __awaiter(void 0, void 0, v
             name: helperData.name,
             email: helperData.email,
             age: helperData.age,
+            workHistory: helperData.workHistory,
             nationality: helperData.nationality,
             experience: helperData.experience,
             photo: photoUrl,
@@ -74,6 +75,7 @@ const bulkCreateHelpers = (helpers) => __awaiter(void 0, void 0, void 0, functio
                 update: {
                     name: helper.name,
                     age: Number(helper.age),
+                    workHistory: helper.workHistory,
                     nationality: helper.nationality,
                     experience: Number(helper.experience),
                     availability: helper.availability.toString().toLowerCase() === 'true',
@@ -84,6 +86,7 @@ const bulkCreateHelpers = (helpers) => __awaiter(void 0, void 0, void 0, functio
                     name: helper.name,
                     email: helper.email,
                     age: Number(helper.age),
+                    workHistory: helper.workHistory,
                     experience: Number(helper.experience),
                     availability: helper.availability.toString().toLowerCase() === 'true',
                     photo: helper.photo || '',
@@ -242,6 +245,8 @@ const updateHelper = (id, helperData, photo, biodata) => __awaiter(void 0, void 
         updatedHelperData.email = helperData.email;
     if (helperData.age)
         updatedHelperData.age = Number(helperData.age);
+    if (helperData.workHistory)
+        updatedHelperData.workHistory = helperData.workHistory;
     if (helperData.nationality)
         updatedHelperData.nationality = helperData.nationality;
     if (photoUrl)

@@ -3,6 +3,7 @@ export type TService = {
   email: string;
   age: number;
   nationality: string;
+  workHistory:string;
   experience: number;
   serviceNames: string;
   photo?: string;

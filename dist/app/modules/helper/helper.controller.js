@@ -60,6 +60,8 @@ const createHelpers = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, 
         if (!helper.name ||
             !helper.email ||
             !helper.age ||
+            !helper.nationality ||
+            !helper.workHistory ||
             !helper.experience ||
             !helper.serviceNames) {
             errors.push(`Row ${i + 1} is missing required fields.`);
