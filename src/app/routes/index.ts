@@ -3,6 +3,7 @@ import { HelperRoutes } from '../modules/helper/helper.route';
 import { AuthRouters } from '../modules/auth/auth.routes';
 import { UserRouters } from '../modules/user/user.routes';
 import { ServiceRoutes } from '../modules/service/service.route';
+import { ContactRoutes } from '../modules/contact/contact.route';
 const router = express.Router();
 
 const moduleRoutes = [
@@ -21,6 +22,10 @@ const moduleRoutes = [
   {
     path: '/services',
     route: ServiceRoutes,
+  },
+  {
+    path: '/contact',
+    route: ContactRoutes,
   },
 ];
 
