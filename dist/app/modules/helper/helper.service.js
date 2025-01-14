@@ -86,6 +86,7 @@ const bulkCreateHelpers = (helpers) => __awaiter(void 0, void 0, void 0, functio
                     name: helper.name,
                     email: helper.email,
                     age: Number(helper.age),
+                    nationality: helper.nationality,
                     workHistory: helper.workHistory,
                     experience: Number(helper.experience),
                     availability: helper.availability.toString().toLowerCase() === 'true',

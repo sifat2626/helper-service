@@ -9,6 +9,7 @@ const auth_routes_1 = require("../modules/auth/auth.routes");
 const user_routes_1 = require("../modules/user/user.routes");
 const service_route_1 = require("../modules/service/service.route");
 const contact_route_1 = require("../modules/contact/contact.route");
+const nationality_route_1 = require("../modules/nationality/nationality.route");
 const router = express_1.default.Router();
 const moduleRoutes = [
     {
@@ -30,6 +31,10 @@ const moduleRoutes = [
     {
         path: '/contact',
         route: contact_route_1.ContactRoutes,
+    },
+    {
+        path: '/nationality',
+        route: nationality_route_1.NationalityRoutes,
     },
 ];
 moduleRoutes.forEach(route => router.use(route.path, route.route));

@@ -87,6 +87,7 @@ const bulkCreateHelpers = async (helpers: any[]) => {
           name: helper.name,
           email: helper.email,
           age: Number(helper.age),
+          nationality: helper.nationality,
           workHistory:helper.workHistory,
           experience: Number(helper.experience),
           availability: helper.availability.toString().toLowerCase() === 'true',
