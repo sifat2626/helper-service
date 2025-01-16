@@ -68,6 +68,7 @@ const registerUserIntoDB = (payload) => __awaiter(void 0, void 0, void 0, functi
     const userData = {
         name: payload.name,
         email: payload.email,
+        phone: payload.phone,
         role: client_1.UserRoleEnum.USER, // Role is always USER during registration
         password: hashedPassword,
     };

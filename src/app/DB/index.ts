@@ -6,7 +6,8 @@ import prisma from '../utils/prisma';
 const superAdminData = {
   name: 'Super Admin',
   email: 'admin@gmail.com',
-  password: '',
+  phone:config.super_admin_phone,
+  password: config.super_admin_password,
   role: UserRoleEnum.SUPERADMIN,
 };
 
@@ -19,12 +20,15 @@ const seedSuperAdmin = async () => {
       },
     });
 
+
     // If not, create one
     if (!isSuperAdminExists) {
       superAdminData.password = await bcrypt.hash(
         config.super_admin_password as string,
         Number(config.bcrypt_salt_rounds) || 12,
       );
+
+
       await prisma.user.create({
         data: superAdminData,
       });

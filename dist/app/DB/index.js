@@ -52,7 +52,8 @@ const prisma_1 = __importDefault(require("../utils/prisma"));
 const superAdminData = {
     name: 'Super Admin',
     email: 'admin@gmail.com',
-    password: '',
+    phone: config_1.default.super_admin_phone,
+    password: config_1.default.super_admin_password,
     role: client_1.UserRoleEnum.SUPERADMIN,
 };
 const seedSuperAdmin = () => __awaiter(void 0, void 0, void 0, function* () {

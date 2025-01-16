@@ -29,6 +29,7 @@ const registerUserIntoDB = async (payload: any) => {
   const userData = {
     name: payload.name,
     email: payload.email,
+    phone: payload.phone,
     role: UserRoleEnum.USER, // Role is always USER during registration
     password: hashedPassword,
   };
