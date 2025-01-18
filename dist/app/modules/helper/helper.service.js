@@ -127,7 +127,7 @@ const bulkCreateHelpers = (helpers) => __awaiter(void 0, void 0, void 0, functio
     return { successCount, errors };
 });
 const getAllHelpers = (query) => __awaiter(void 0, void 0, void 0, function* () {
-    const { limit = 10, page = 1, minAge, maxAge, nationality, experience, serviceNames, // Array of service names to filter
+    const { limit = 10, page = 1, minAge, maxAge, nationality, minExp, maxExp, serviceNames, // Array of service names to filter
     availability, name, id, email, } = query;
     const filters = {};
     if (name) {
@@ -157,15 +157,28 @@ const getAllHelpers = (query) => __awaiter(void 0, void 0, void 0, function* () 
     else if (maxAge) {
         filters.age = { lte: Number(maxAge) };
     }
+    if (minExp && maxExp) {
+        filters.experience = {
+            gte: Number(minExp),
+            lte: Number(maxExp),
+        };
+    }
+    else if (minExp) {
+        filters.experience = { gte: Number(minExp) };
+    }
+    else if (maxAge) {
+        filters.experience = { lte: Number(maxExp) };
+    }
     if (nationality) {
         filters.nationality = {
             contains: nationality,
             mode: 'insensitive',
         };
     }
-    if (experience) {
-        filters.experience = { gte: Number(experience) };
-    }
+    //
+    // if (experience) {
+    //   filters.experience = { gte: Number(experience) };
+    // }
     if (availability !== undefined) {
         filters.availability = availability.toString() === 'true';
     }
@@ -435,5 +448,5 @@ exports.HelperServices = {
     deleteHelper,
     addHelperToFavorites,
     removeHelperFromFavorites,
-    bookHelper
+    bookHelper,
 };

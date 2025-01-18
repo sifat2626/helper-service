@@ -10,15 +10,19 @@ const auth_1 = __importDefault(require("../../middlewares/auth"));
 const client_1 = require("@prisma/client");
 const uploadMiddleware_1 = require("../../utils/uploadMiddleware");
 const router = express_1.default.Router();
-router.post("/", (0, auth_1.default)(client_1.UserRoleEnum.ADMIN, client_1.UserRoleEnum.SUPERADMIN), uploadMiddleware_1.uploadMultipleMiddleware, 
+router.post('/', 
+// auth(UserRoleEnum.ADMIN, UserRoleEnum.SUPERADMIN),
+uploadMiddleware_1.uploadMultipleMiddleware, 
 // validateRequest(HelperValidation.createHelper),
 helper_controller_1.HelperControllers.createHelper);
-router.post("/upload-helper", (0, auth_1.default)(client_1.UserRoleEnum.ADMIN, client_1.UserRoleEnum.SUPERADMIN), uploadMiddleware_1.uploadMiddleware, helper_controller_1.HelperControllers.createHelpers);
-router.get("/", (0, auth_1.default)(client_1.UserRoleEnum.USER, client_1.UserRoleEnum.ADMIN, client_1.UserRoleEnum.SUPERADMIN), helper_controller_1.HelperControllers.getAllHelpers);
+router.post('/upload-helper', (0, auth_1.default)(client_1.UserRoleEnum.ADMIN, client_1.UserRoleEnum.SUPERADMIN), uploadMiddleware_1.uploadMiddleware, helper_controller_1.HelperControllers.createHelpers);
+router.get('/', 
+// auth(UserRoleEnum.USER,UserRoleEnum.ADMIN,UserRoleEnum.SUPERADMIN),
+helper_controller_1.HelperControllers.getAllHelpers);
 //
 router.post('/favorites/add/:maidId', (0, auth_1.default)(client_1.UserRoleEnum.USER), helper_controller_1.HelperControllers.addHelperToFavorites);
 router.post('/favorites/remove/:maidId', (0, auth_1.default)(client_1.UserRoleEnum.USER), helper_controller_1.HelperControllers.removeHelperFromFavorites);
 router.post('/book/:maidId', (0, auth_1.default)(client_1.UserRoleEnum.USER), helper_controller_1.HelperControllers.bookHelper);
-router.put("/:id", (0, auth_1.default)(client_1.UserRoleEnum.ADMIN, client_1.UserRoleEnum.SUPERADMIN), uploadMiddleware_1.uploadMultipleMiddleware, helper_controller_1.HelperControllers.updateHelper);
-router.delete("/:id", (0, auth_1.default)(client_1.UserRoleEnum.ADMIN, client_1.UserRoleEnum.SUPERADMIN), helper_controller_1.HelperControllers.deleteHelper);
+router.put('/:id', (0, auth_1.default)(client_1.UserRoleEnum.ADMIN, client_1.UserRoleEnum.SUPERADMIN), uploadMiddleware_1.uploadMultipleMiddleware, helper_controller_1.HelperControllers.updateHelper);
+router.delete('/:id', (0, auth_1.default)(client_1.UserRoleEnum.ADMIN, client_1.UserRoleEnum.SUPERADMIN), helper_controller_1.HelperControllers.deleteHelper);
 exports.HelperRoutes = router;

@@ -98,8 +98,12 @@ const getSingleUser = (id) => __awaiter(void 0, void 0, void 0, function* () {
             id: id,
         },
         include: {
-            favorites: true
-        }
+            favorites: {
+                include: {
+                    maid: true,
+                },
+            },
+        },
     });
     if (!user) {
         throw new AppError_1.default(400, 'User not found');
@@ -227,7 +231,9 @@ const sendOtpForPasswordReset = (email) => __awaiter(void 0, void 0, void 0, fun
     return { message: 'OTP sent to your email' };
 });
 const verifyOtpAndResetPassword = (email, otp, newPassword) => __awaiter(void 0, void 0, void 0, function* () {
-    const passwordReset = yield prisma_1.default.passwordReset.findUnique({ where: { email } });
+    const passwordReset = yield prisma_1.default.passwordReset.findUnique({
+        where: { email },
+    });
     if (!passwordReset) {
         throw new AppError_1.default(400, 'Invalid or expired OTP');
     }
@@ -266,5 +272,5 @@ exports.UserServices = {
     changePassword,
     changeRole,
     sendOtpForPasswordReset,
-    verifyOtpAndResetPassword
+    verifyOtpAndResetPassword,
 };

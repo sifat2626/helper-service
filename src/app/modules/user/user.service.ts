@@ -43,7 +43,6 @@ const registerUserIntoDB = async (payload: any) => {
 };
 
 const getAllUsersFromDB = async () => {
-
   const result = await prisma.user.findMany({
     select: {
       id: true,
@@ -61,20 +60,24 @@ const getAllUsersFromDB = async () => {
 
 const getSingleUser = async (id: string) => {
   const user = await prisma.user.findUnique({
-    where:{
+    where: {
       id: id,
     },
     include: {
-      favorites:true
-    }
-  })
+      favorites: {
+        include: {
+          maid: true,
+        },
+      },
+    },
+  });
 
   if (!user) {
     throw new AppError(400, 'User not found');
   }
 
   return user;
-}
+};
 //
 // const updateMyProfileIntoDB = async (id: string, payload: any) => {
 //   const userProfileData = payload.Profile;
@@ -232,14 +235,23 @@ const sendOtpForPasswordReset = async (email: string) => {
   });
 
   // Send OTP via email
-  await sendEmail(email, 'Password Reset OTP', `Your OTP is ${otp}. It is valid for 2 minutes.`);
+  await sendEmail(
+    email,
+    'Password Reset OTP',
+    `Your OTP is ${otp}. It is valid for 2 minutes.`,
+  );
 
   return { message: 'OTP sent to your email' };
-}
+};
 
-
-const verifyOtpAndResetPassword = async (email: string, otp: string, newPassword: string) => {
-  const passwordReset = await prisma.passwordReset.findUnique({ where: { email } });
+const verifyOtpAndResetPassword = async (
+  email: string,
+  otp: string,
+  newPassword: string,
+) => {
+  const passwordReset = await prisma.passwordReset.findUnique({
+    where: { email },
+  });
   if (!passwordReset) {
     throw new AppError(400, 'Invalid or expired OTP');
   }
@@ -277,8 +289,7 @@ const verifyOtpAndResetPassword = async (email: string, otp: string, newPassword
   await prisma.passwordReset.delete({ where: { email } });
 
   return { message: 'Password reset successfully' };
-}
-
+};
 
 export const UserServices = {
   registerUserIntoDB,
@@ -287,5 +298,5 @@ export const UserServices = {
   changePassword,
   changeRole,
   sendOtpForPasswordReset,
-  verifyOtpAndResetPassword
+  verifyOtpAndResetPassword,
 };

@@ -142,7 +142,8 @@ const getAllHelpers = async (query: any) => {
     minAge,
     maxAge,
     nationality,
-    experience,
+    minExp,
+    maxExp,
     serviceNames, // Array of service names to filter
     availability,
     name,
@@ -181,16 +182,27 @@ const getAllHelpers = async (query: any) => {
     filters.age = { lte: Number(maxAge) };
   }
 
+  if (minExp && maxExp) {
+    filters.experience = {
+      gte: Number(minExp),
+      lte: Number(maxExp),
+    };
+  } else if (minExp) {
+    filters.experience = { gte: Number(minExp) };
+  } else if (maxAge) {
+    filters.experience = { lte: Number(maxExp) };
+  }
+
   if(nationality) {
     filters.nationality = {
       contains: nationality,
       mode: 'insensitive',
     }
   }
-
-  if (experience) {
-    filters.experience = { gte: Number(experience) };
-  }
+  //
+  // if (experience) {
+  //   filters.experience = { gte: Number(experience) };
+  // }
 
   if (availability !== undefined) {
     filters.availability = availability.toString() === 'true';
@@ -518,5 +530,5 @@ export const HelperServices = {
   deleteHelper,
   addHelperToFavorites,
   removeHelperFromFavorites,
-  bookHelper
+  bookHelper,
 };
