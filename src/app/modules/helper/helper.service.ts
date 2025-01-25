@@ -187,9 +187,9 @@ const getAllHelpers = async (query: any) => {
       gte: Number(minExp),
       lte: Number(maxExp),
     };
-  } else if (minExp) {
+  } else if (minExp  && !maxExp) {
     filters.experience = { gte: Number(minExp) };
-  } else if (maxAge) {
+  } else if (maxExp && !minExp) {
     filters.experience = { lte: Number(maxExp) };
   }
 

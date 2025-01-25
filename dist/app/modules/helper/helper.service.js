@@ -163,10 +163,10 @@ const getAllHelpers = (query) => __awaiter(void 0, void 0, void 0, function* () 
             lte: Number(maxExp),
         };
     }
-    else if (minExp) {
+    else if (minExp && !maxExp) {
         filters.experience = { gte: Number(minExp) };
     }
-    else if (maxAge) {
+    else if (maxExp && !minExp) {
         filters.experience = { lte: Number(maxExp) };
     }
     if (nationality) {
