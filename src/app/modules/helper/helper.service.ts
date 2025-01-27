@@ -301,6 +301,7 @@ const updateHelper = async (
   if (helperData.name) updatedHelperData.name = helperData.name;
   if (helperData.email) updatedHelperData.email = helperData.email;
   if (helperData.age) updatedHelperData.age = Number(helperData.age);
+  if (helperData.experience) updatedHelperData.age = Number(helperData.experience);
   if (helperData.workHistory) updatedHelperData.workHistory = helperData.workHistory;
   if (helperData.nationality) updatedHelperData.nationality = helperData.nationality;
   if (photoUrl) updatedHelperData.photo = photoUrl;

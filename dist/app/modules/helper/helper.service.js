@@ -259,6 +259,8 @@ const updateHelper = (id, helperData, photo, biodata) => __awaiter(void 0, void 
         updatedHelperData.email = helperData.email;
     if (helperData.age)
         updatedHelperData.age = Number(helperData.age);
+    if (helperData.experience)
+        updatedHelperData.age = Number(helperData.experience);
     if (helperData.workHistory)
         updatedHelperData.workHistory = helperData.workHistory;
     if (helperData.nationality)
