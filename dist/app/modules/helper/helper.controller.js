@@ -91,24 +91,22 @@ const getAllHelpers = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, 
 const updateHelper = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c, _d;
     const { id } = req.params;
-    if (!req.body.data) {
-        throw new AppError_1.default(400, 'Data field is required.');
+    // Validate request body
+    if (!req.body.data && !req.files) {
+        throw new AppError_1.default(400, 'At least one field is required to update.');
     }
-    let helperData;
-    try {
-        helperData = JSON.parse(req.body.data);
-    }
-    catch (_e) {
-        throw new AppError_1.default(400, 'Invalid JSON format for data field.');
-    }
+    let helperData = {};
     const photo = (_b = (_a = req.files) === null || _a === void 0 ? void 0 : _a.image) === null || _b === void 0 ? void 0 : _b[0];
     const biodata = (_d = (_c = req.files) === null || _c === void 0 ? void 0 : _c.pdf) === null || _d === void 0 ? void 0 : _d[0];
+    // Validate photo if provided
     if (photo && !photo.mimetype.startsWith('image/')) {
         throw new AppError_1.default(400, 'Invalid file type for photo. Only images are allowed.');
     }
+    // Validate biodata if provided
     if (biodata && biodata.mimetype !== 'application/pdf') {
         throw new AppError_1.default(400, 'Invalid file type for biodata. Only PDF files are allowed.');
     }
+    // Call the service layer to handle the update
     const result = yield helper_service_1.HelperServices.updateHelper(id, helperData, photo, biodata);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
@@ -118,11 +116,11 @@ const updateHelper = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, v
 }));
 const deleteHelper = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    yield helper_service_1.HelperServices.deleteHelper(id);
+    const result = yield helper_service_1.HelperServices.deleteHelper(id);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.NO_CONTENT,
         message: 'Helper deleted successfully',
-        data: null
+        data: result
     });
 }));
 const addHelperToFavorites = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
