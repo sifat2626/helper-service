@@ -142,9 +142,9 @@ const deleteHelper = catchAsync(async (req: Request, res) => {
   const result = await HelperServices.deleteHelper(id);
 
   sendResponse(res, {
-    statusCode: httpStatus.NO_CONTENT,
+    statusCode: httpStatus.OK,
     message: 'Helper deleted successfully',
-    data: result
+    data: null
   });
 });
 

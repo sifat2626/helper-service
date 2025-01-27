@@ -118,9 +118,9 @@ const deleteHelper = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, v
     const { id } = req.params;
     const result = yield helper_service_1.HelperServices.deleteHelper(id);
     (0, sendResponse_1.default)(res, {
-        statusCode: http_status_1.default.NO_CONTENT,
+        statusCode: http_status_1.default.OK,
         message: 'Helper deleted successfully',
-        data: result
+        data: null
     });
 }));
 const addHelperToFavorites = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
