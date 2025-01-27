@@ -111,7 +111,8 @@ const updateHelper = catchAsync(async (req: Request, res) => {
     throw new AppError(400, 'At least one field is required to update.');
   }
 
-  let helperData = {};
+  const bodyData = JSON.parse(req.body.data);
+
 
   const photo = req.files?.image?.[0];
   const biodata = req.files?.pdf?.[0];
@@ -127,7 +128,7 @@ const updateHelper = catchAsync(async (req: Request, res) => {
   }
 
   // Call the service layer to handle the update
-  const result = await HelperServices.updateHelper(id, helperData, photo, biodata);
+  const result = await HelperServices.updateHelper(id, bodyData, photo, biodata);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

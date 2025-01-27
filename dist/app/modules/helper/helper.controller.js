@@ -95,7 +95,7 @@ const updateHelper = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, v
     if (!req.body.data && !req.files) {
         throw new AppError_1.default(400, 'At least one field is required to update.');
     }
-    let helperData = {};
+    const bodyData = JSON.parse(req.body.data);
     const photo = (_b = (_a = req.files) === null || _a === void 0 ? void 0 : _a.image) === null || _b === void 0 ? void 0 : _b[0];
     const biodata = (_d = (_c = req.files) === null || _c === void 0 ? void 0 : _c.pdf) === null || _d === void 0 ? void 0 : _d[0];
     // Validate photo if provided
@@ -107,7 +107,7 @@ const updateHelper = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, v
         throw new AppError_1.default(400, 'Invalid file type for biodata. Only PDF files are allowed.');
     }
     // Call the service layer to handle the update
-    const result = yield helper_service_1.HelperServices.updateHelper(id, helperData, photo, biodata);
+    const result = yield helper_service_1.HelperServices.updateHelper(id, bodyData, photo, biodata);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         message: 'Helper updated successfully',
