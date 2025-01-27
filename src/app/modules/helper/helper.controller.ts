@@ -106,28 +106,27 @@ const getAllHelpers = catchAsync(async (req: Request, res) => {
 const updateHelper = catchAsync(async (req: Request, res) => {
   const { id } = req.params;
 
-  if (!req.body.data) {
-    throw new AppError(400, 'Data field is required.');
+  // Validate request body
+  if (!req.body.data && !req.files) {
+    throw new AppError(400, 'At least one field is required to update.');
   }
 
-  let helperData;
-  try {
-    helperData = JSON.parse(req.body.data);
-  } catch {
-    throw new AppError(400, 'Invalid JSON format for data field.');
-  }
+  let helperData = {};
 
   const photo = req.files?.image?.[0];
   const biodata = req.files?.pdf?.[0];
 
+  // Validate photo if provided
   if (photo && !photo.mimetype.startsWith('image/')) {
     throw new AppError(400, 'Invalid file type for photo. Only images are allowed.');
   }
 
+  // Validate biodata if provided
   if (biodata && biodata.mimetype !== 'application/pdf') {
     throw new AppError(400, 'Invalid file type for biodata. Only PDF files are allowed.');
   }
 
+  // Call the service layer to handle the update
   const result = await HelperServices.updateHelper(id, helperData, photo, biodata);
 
   sendResponse(res, {
