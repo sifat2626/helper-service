@@ -80,15 +80,9 @@ const registerUserIntoDB = (payload) => __awaiter(void 0, void 0, void 0, functi
 });
 const getAllUsersFromDB = () => __awaiter(void 0, void 0, void 0, function* () {
     const result = yield prisma_1.default.user.findMany({
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            status: true,
-            createdAt: true,
-            updatedAt: true,
-        },
+        include: {
+            favorites: true
+        }
     });
     return result;
 });

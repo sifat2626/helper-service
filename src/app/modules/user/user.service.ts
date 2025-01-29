@@ -44,15 +44,9 @@ const registerUserIntoDB = async (payload: any) => {
 
 const getAllUsersFromDB = async () => {
   const result = await prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      status: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+    include:{
+      favorites:true
+    }
   });
 
   return result;

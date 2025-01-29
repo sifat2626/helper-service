@@ -5,6 +5,7 @@ import { isDataReferenced } from '../../utils/checkReference';
 import AppError from '../../errors/AppError';
 import { UserRoleEnum } from '@prisma/client';
 import { sendEmail } from '../../utils/sendEmail';
+import { removeFileFromSpaces } from '../../utils/removeFileFromSpaces';
 
 const createHelper = async (
   helperData: TService,
@@ -353,27 +354,40 @@ const updateHelper = async (
 
 
 const deleteHelper = async (id: string) => {
-  const referencingModels = [
-    { model: 'booking', field: 'maidId' },
-    { model: 'favorite', field: 'maidId' },
-  ];
-
-  const isReferenced = await isDataReferenced(
-    'maid',
-    'id',
-    id,
-    referencingModels,
-  );
-
-  if (isReferenced) {
-    throw new Error(
-      'This maid cannot be deleted because it is referenced in other records.',
-    );
-  }
-
-  return prisma.maid.delete({
+  // Check if the maid exists
+  const maid = await prisma.maid.findUnique({
     where: { id },
   });
+
+  if (!maid) {
+    throw new AppError(404, "Helper (Maid) not found.");
+  }
+
+  // Ensure the maid is not referenced in other tables before deletion
+  const referencingModels = [
+    { model: "booking", field: "maidId" },
+    { model: "favorite", field: "maidId" },
+  ];
+
+  const isReferenced = await isDataReferenced("maid", "id", id, referencingModels);
+  if (isReferenced) {
+    throw new AppError(400, "This maid cannot be deleted because it is referenced in other records.");
+  }
+
+  // Delete photo & biodata from DigitalOcean Spaces if they exist
+  if (maid.photo) {
+    await removeFileFromSpaces(maid.photo);
+  }
+  if (maid.biodataUrl) {
+    await removeFileFromSpaces(maid.biodataUrl);
+  }
+
+  // Delete the helper (maid) record from the database
+  await prisma.maid.delete({
+    where: { id },
+  });
+
+  return { message: "Helper (Maid) deleted successfully" };
 };
 
 const addHelperToFavorites = async (userId: string, maidId: string) => {
