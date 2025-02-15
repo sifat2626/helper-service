@@ -1,8 +1,9 @@
 import prisma from '../../utils/prisma';
 import AppError from '../../errors/AppError';
 import { isDataReferenced } from '../../utils/checkReference';
+import { PrefferedServices } from '@prisma/client';
 
-const createService = async (service: string) => {
+const createService = async (service: PrefferedServices) => {
   const exists = await prisma.service.findFirst({
     where:{
       name: service,
@@ -41,7 +42,7 @@ const getAllServices = async(query:any)=>{
 
 }
 
-const getServiceIdByName = async (name: string) => {
+const getServiceIdByName = async (name: PrefferedServices) => {
   let service = await prisma.service.findFirst({
     where: {
       name: name
@@ -55,7 +56,7 @@ const getServiceIdByName = async (name: string) => {
   return service.id
 }
 
-const updateService = async (id: string, name: string) => {
+const updateService = async (id: string, name: PrefferedServices) => {
   const exists = await prisma.service.findUnique({
     where: {
       id,

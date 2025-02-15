@@ -19,7 +19,9 @@ const checkReference_1 = require("../../utils/checkReference");
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const client_1 = require("@prisma/client");
 const sendEmail_1 = require("../../utils/sendEmail");
+const removeFileFromSpaces_1 = require("../../utils/removeFileFromSpaces");
 const createHelper = (helperData, photo, biodata) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     // Step 1: Handle photo and biodata uploads
     const photoUrl = photo ? yield (0, uploadToDigitalOcean_1.uploadFileToDigitalOcean)(photo, 'maids/photos') : '';
     const biodataUrl = biodata ? yield (0, uploadToDigitalOcean_1.uploadFileToDigitalOcean)(biodata, 'maids/biodatas') : '';
@@ -27,7 +29,6 @@ const createHelper = (helperData, photo, biodata) => __awaiter(void 0, void 0, v
     const maid = yield prisma_1.default.maid.create({
         data: {
             name: helperData.name,
-            email: helperData.email,
             age: helperData.age,
             workHistory: helperData.workHistory,
             nationality: helperData.nationality,
@@ -37,7 +38,7 @@ const createHelper = (helperData, photo, biodata) => __awaiter(void 0, void 0, v
             availability: helperData.availability,
         },
     });
-    const serviceNames = helperData.serviceNames.split(',');
+    const serviceNames = (_a = helperData === null || helperData === void 0 ? void 0 : helperData.serviceNames) === null || _a === void 0 ? void 0 : _a.split(',');
     // Step 3: Handle multiple services outside the transaction
     if (helperData.serviceNames && helperData.serviceNames.length > 0) {
         for (const serviceName of serviceNames) {
@@ -46,7 +47,7 @@ const createHelper = (helperData, photo, biodata) => __awaiter(void 0, void 0, v
             const service = yield prisma_1.default.service.upsert({
                 where: { name: serviceName },
                 update: {}, // No updates for existing service
-                create: { name: serviceName.toLowerCase() },
+                create: { name: serviceName },
             });
             // Create the relation in `maidService`
             yield prisma_1.default.maidService.create({
@@ -68,10 +69,18 @@ const bulkCreateHelpers = (helpers) => __awaiter(void 0, void 0, void 0, functio
             // Split the `serviceNames` string into an array using ';' as a delimiter
             const serviceNames = [];
             helper.serviceNames.map((serviceName) => {
-                serviceNames.push(serviceName.trim().toLowerCase());
+                // Trim whitespace and sanitize the string
+                const sanitizedServiceName = serviceName.trim();
+                // Validate serviceName to ensure no invalid characters
+                if (sanitizedServiceName && /^[a-zA-Z0-9_ ]*$/.test(sanitizedServiceName)) {
+                    serviceNames.push(sanitizedServiceName);
+                }
+                else {
+                    throw new Error(`Invalid service name: ${serviceName}`);
+                }
             });
             const maid = yield prisma_1.default.maid.upsert({
-                where: { email: helper.email },
+                where: { id: helper.id },
                 update: {
                     name: helper.name,
                     age: Number(helper.age),
@@ -84,7 +93,6 @@ const bulkCreateHelpers = (helpers) => __awaiter(void 0, void 0, void 0, functio
                 },
                 create: {
                     name: helper.name,
-                    email: helper.email,
                     age: Number(helper.age),
                     nationality: helper.nationality,
                     workHistory: helper.workHistory,
@@ -97,11 +105,11 @@ const bulkCreateHelpers = (helpers) => __awaiter(void 0, void 0, void 0, functio
             // Iterate over the service names and associate them with the maid
             for (const serviceName of serviceNames) {
                 let service = yield prisma_1.default.service.findUnique({
-                    where: { name: serviceName },
+                    where: { name: serviceName.trim() },
                 });
                 if (!service) {
                     service = yield prisma_1.default.service.create({
-                        data: { name: serviceName },
+                        data: { name: serviceName.trim() },
                     });
                 }
                 yield prisma_1.default.maidService.upsert({
@@ -127,7 +135,7 @@ const bulkCreateHelpers = (helpers) => __awaiter(void 0, void 0, void 0, functio
     return { successCount, errors };
 });
 const getAllHelpers = (query) => __awaiter(void 0, void 0, void 0, function* () {
-    const { limit = 10, page = 1, minAge, maxAge, nationality, minExp, maxExp, serviceNames, // Array of service names to filter
+    const { limit = 10, page = 1, minAge, maxAge, nationality, minExp, maxExp, serviceNames = [], // Array of service names to filter
     availability, name, id, email, } = query;
     const filters = {};
     if (name) {
@@ -199,7 +207,6 @@ const getAllHelpers = (query) => __awaiter(void 0, void 0, void 0, function* () 
                         Service: {
                             name: {
                                 equals: serviceName,
-                                mode: 'insensitive',
                             },
                         },
                     },
@@ -287,12 +294,12 @@ const updateHelper = (id, helperData, photo, biodata) => __awaiter(void 0, void 
         // Process and associate new services
         for (const serviceName of serviceNames) {
             let service = yield prisma_1.default.service.findUnique({
-                where: { name: serviceName.trim().toLowerCase() },
+                where: { name: serviceName.trim() },
             });
             if (!service) {
                 // Create the service if it doesn't exist
                 service = yield prisma_1.default.service.create({
-                    data: { name: serviceName.trim().toLowerCase() },
+                    data: { name: serviceName.trim() },
                 });
             }
             // Link the maid with the service
@@ -307,17 +314,34 @@ const updateHelper = (id, helperData, photo, biodata) => __awaiter(void 0, void 
     return updatedHelper;
 });
 const deleteHelper = (id) => __awaiter(void 0, void 0, void 0, function* () {
-    const referencingModels = [
-        { model: 'booking', field: 'maidId' },
-        { model: 'favorite', field: 'maidId' },
-    ];
-    const isReferenced = yield (0, checkReference_1.isDataReferenced)('maid', 'id', id, referencingModels);
-    if (isReferenced) {
-        throw new Error('This maid cannot be deleted because it is referenced in other records.');
-    }
-    return prisma_1.default.maid.delete({
+    // Check if the maid exists
+    const maid = yield prisma_1.default.maid.findUnique({
         where: { id },
     });
+    if (!maid) {
+        throw new AppError_1.default(404, "Helper (Maid) not found.");
+    }
+    // Ensure the maid is not referenced in other tables before deletion
+    const referencingModels = [
+        { model: "booking", field: "maidId" },
+        { model: "favorite", field: "maidId" },
+    ];
+    const isReferenced = yield (0, checkReference_1.isDataReferenced)("maid", "id", id, referencingModels);
+    if (isReferenced) {
+        throw new AppError_1.default(400, "This maid cannot be deleted because it is referenced in other records.");
+    }
+    // Delete photo & biodata from DigitalOcean Spaces if they exist
+    if (maid.photo) {
+        yield (0, removeFileFromSpaces_1.removeFileFromSpaces)(maid.photo);
+    }
+    if (maid.biodataUrl) {
+        yield (0, removeFileFromSpaces_1.removeFileFromSpaces)(maid.biodataUrl);
+    }
+    // Delete the helper (maid) record from the database
+    yield prisma_1.default.maid.delete({
+        where: { id },
+    });
+    return { message: "Helper (Maid) deleted successfully" };
 });
 const addHelperToFavorites = (userId, maidId) => __awaiter(void 0, void 0, void 0, function* () {
     const maid = yield prisma_1.default.maid.findUnique({

@@ -52,7 +52,7 @@ const prisma_1 = __importDefault(require("../utils/prisma"));
 const superAdminData = {
     name: 'Super Admin',
     email: 'admin@gmail.com',
-    phone: config_1.default.super_admin_phone,
+    whatsappNo: config_1.default.super_admin_phone,
     password: config_1.default.super_admin_password,
     role: client_1.UserRoleEnum.SUPERADMIN,
 };

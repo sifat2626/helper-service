@@ -51,40 +51,64 @@ const bcrypt = __importStar(require("bcrypt"));
 const prisma_1 = __importDefault(require("../../utils/prisma"));
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const sendEmail_1 = require("../../utils/sendEmail");
-const registerUserIntoDB = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+const calculatePagination_1 = require("../../utils/calculatePagination");
+const generateToken_1 = require("../../utils/generateToken");
+const config_1 = __importDefault(require("../../../config"));
+const http_status_1 = __importDefault(require("http-status"));
+const registerUserIntoDB = (name, phone, email, password, whatsappNo, additionalRequest, preferredService, duration) => __awaiter(void 0, void 0, void 0, function* () {
     // Hash the user's password
-    const hashedPassword = yield bcrypt.hash(payload.password, 12);
-    // Ensure the role is always set to USER during registration
-    if (payload.role && payload.role !== client_1.UserRoleEnum.USER) {
-        throw new AppError_1.default(400, 'Users can only be registered with the USER role.');
-    }
+    const hashedPassword = yield bcrypt.hash(password, 12);
     const existingUser = yield prisma_1.default.user.findUnique({
-        where: { email: payload.email },
+        where: { email },
     });
     if (existingUser) {
         throw new AppError_1.default(400, 'User already exists');
     }
     // Prepare user data
     const userData = {
-        name: payload.name,
-        email: payload.email,
-        phone: payload.phone,
+        name: name,
+        email: email,
+        phone: phone,
         role: client_1.UserRoleEnum.USER, // Role is always USER during registration
         password: hashedPassword,
+        whatsappNo: whatsappNo,
+        additionalRequest: additionalRequest,
+        preferredService: preferredService,
+        duration: duration,
     };
     // Create the user
     const createdUser = yield prisma_1.default.user.create({
         data: userData,
     });
-    return createdUser;
+    if (!createdUser) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'failed to create user');
+    }
+    const accessToken = (0, generateToken_1.generateToken)({
+        id: createdUser.id,
+        name: createdUser.name,
+        email: createdUser.email,
+        role: createdUser.role,
+    }, config_1.default.jwt.access_secret, config_1.default.jwt.access_expires_in);
+    //@ts-ignore
+    createdUser["accessToken"] = accessToken;
+    return { data: createdUser };
 });
-const getAllUsersFromDB = () => __awaiter(void 0, void 0, void 0, function* () {
+const getAllUsersFromDB = (options) => __awaiter(void 0, void 0, void 0, function* () {
+    const { page, limit, skip, sortBy, sortOrder } = (0, calculatePagination_1.calculatePagination)(options);
     const result = yield prisma_1.default.user.findMany({
+        skip, take: limit,
         include: {
             favorites: true
+        },
+        orderBy: {
+            [sortBy]: sortOrder,
         }
     });
-    return result;
+    const total = yield prisma_1.default.user.count();
+    const meta = {
+        page, limit, total, totalPage: Math.ceil(total / limit),
+    };
+    return { meta, data: result };
 });
 const getSingleUser = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const user = yield prisma_1.default.user.findUnique({

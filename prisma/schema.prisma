@@ -8,15 +8,18 @@ datasource db {
 }
 
 model User {
-  id        String       @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  phone     String
-  email     String       @unique
-  password  String
-  role      UserRoleEnum @default(USER)
-  status    UserStatus   @default(ACTIVE)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @default(now())
+  id                String             @id @default(auto()) @map("_id") @db.ObjectId
+  name              String
+  email             String             @unique
+  password          String
+  whatsappNo        String?
+  additionalRequest String?
+  preferredService  PrefferedServices? @default(HOUSE_WORKS)
+  duration          Int?
+  role              UserRoleEnum       @default(USER)
+  status            UserStatus         @default(ACTIVE)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @default(now())
 
   // One-to-many relationship for the user's favorite maids
   favorites Favorite[]
@@ -39,7 +42,6 @@ model PasswordReset {
 model Maid {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   name         String
-  email        String   @unique
   age          Int
   nationality  String   @default("unknown")
   experience   Int // Years of experience
@@ -47,7 +49,6 @@ model Maid {
   biodataUrl   String? // URL to download PDF biodata
   workHistory  String   @default("First Timer")
   availability Boolean  @default(true)
-  rating       Float?   @default(0) // Default rating is 0, optional if not rated
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now())
 
@@ -75,14 +76,21 @@ model Booking {
 }
 
 model Service {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  id        String            @id @default(auto()) @map("_id") @db.ObjectId
+  name      PrefferedServices @unique
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @default(now())
 
   MaidServices MaidService[]
 
   @@map("services")
+}
+
+enum PrefferedServices {
+  HOUSE_WORKS
+  CHILD_CARE
+  INFANT_CARE
+  ELDERLY_CARE
 }
 
 model MaidService {

@@ -21,6 +21,7 @@ const auth = (...roles) => {
     return (req, _res, next) => __awaiter(void 0, void 0, void 0, function* () {
         try {
             const token = req.headers.authorization;
+            console.log(token);
             if (!token) {
                 throw new AppError_1.default(http_status_1.default.UNAUTHORIZED, 'You are not authorized!');
             }

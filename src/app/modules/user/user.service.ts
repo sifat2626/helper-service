@@ -1,24 +1,26 @@
-import { User, UserRoleEnum } from '@prisma/client';
+import { PrefferedServices, User, UserRoleEnum } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import prisma from '../../utils/prisma';
 import AppError from '../../errors/AppError';
 import { sendEmail } from '../../utils/sendEmail';
+import { IPaginationOptions } from '../../interface/pagination.type';
+import { calculatePagination } from '../../utils/calculatePagination';
+import { generateToken } from '../../utils/generateToken';
+import config from '../../../config';
+import { Secret } from 'jsonwebtoken';
+import httpStatus from 'http-status';
 
 interface UserWithOptionalPassword extends Omit<User, 'password'> {
   password?: string;
 }
 
-const registerUserIntoDB = async (payload: any) => {
+const registerUserIntoDB = async (name:string,phone:string,email:string,password:string,whatsappNo:string,additionalRequest:string,preferredService:PrefferedServices,duration:number) => {
   // Hash the user's password
-  const hashedPassword: string = await bcrypt.hash(payload.password, 12);
+  const hashedPassword: string = await bcrypt.hash(password, 12);
 
-  // Ensure the role is always set to USER during registration
-  if (payload.role && payload.role !== UserRoleEnum.USER) {
-    throw new AppError(400, 'Users can only be registered with the USER role.');
-  }
 
   const existingUser = await prisma.user.findUnique({
-    where: { email: payload.email },
+    where: { email },
   });
 
   if (existingUser) {
@@ -27,11 +29,15 @@ const registerUserIntoDB = async (payload: any) => {
 
   // Prepare user data
   const userData = {
-    name: payload.name,
-    email: payload.email,
-    phone: payload.phone,
+    name: name,
+    email: email,
+    phone: phone,
     role: UserRoleEnum.USER, // Role is always USER during registration
     password: hashedPassword,
+    whatsappNo:whatsappNo,
+    additionalRequest:additionalRequest,
+    preferredService:preferredService,
+    duration: duration,
   };
 
   // Create the user
@@ -39,17 +45,44 @@ const registerUserIntoDB = async (payload: any) => {
     data: userData,
   });
 
-  return createdUser;
+  if(!createdUser) {
+    throw  new AppError(httpStatus.BAD_REQUEST, 'failed to create user');
+  }
+
+  const accessToken = generateToken(
+    {
+      id: createdUser.id,
+      name: createdUser.name,
+      email: createdUser.email,
+      role: createdUser.role,
+    },
+    config.jwt.access_secret as Secret,
+    config.jwt.access_expires_in as string,
+  );
+
+  //@ts-ignore
+  createdUser["accessToken"] = accessToken;
+  return { data: createdUser};
 };
 
-const getAllUsersFromDB = async () => {
+const getAllUsersFromDB = async (options:IPaginationOptions) => {
+  const {page, limit, skip, sortBy, sortOrder} = calculatePagination(options);
+
   const result = await prisma.user.findMany({
+    skip, take: limit,
     include:{
       favorites:true
+    },
+    orderBy:{
+      [sortBy]:sortOrder,
     }
   });
+  const total = await  prisma.user.count();
+  const meta = {
+    page, limit, total, totalPage:Math.ceil(total/limit),
+  }
 
-  return result;
+  return { meta,  data:result };
 };
 
 const getSingleUser = async (id: string) => {

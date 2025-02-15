@@ -6,7 +6,7 @@ import prisma from '../utils/prisma';
 const superAdminData = {
   name: 'Super Admin',
   email: 'admin@gmail.com',
-  phone:config.super_admin_phone,
+  whatsappNo:config.super_admin_phone,
   password: config.super_admin_password,
   role: UserRoleEnum.SUPERADMIN,
 };

@@ -2,9 +2,11 @@ import httpStatus from 'http-status';
 import { UserServices } from './user.service';
 import sendResponse from '../../utils/sendResponse';
 import catchAsync from '../../utils/catchAsync';
+import pickValidFields from '../../utils/pickValidFields';
 
 const registerUser = catchAsync(async (req, res) => {
-  const result = await UserServices.registerUserIntoDB(req.body);
+  const {name,phone,email,password,whatsappNo,additionalRequest,preferredService,duration} = req.body
+  const result = await UserServices.registerUserIntoDB(name,phone,email,password,whatsappNo,additionalRequest,preferredService,duration);
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -14,12 +16,15 @@ const registerUser = catchAsync(async (req, res) => {
 });
 
 const getAllUsers = catchAsync(async (req, res) => {
-  const result = await UserServices.getAllUsersFromDB()
+  const options = pickValidFields(req.query, ["page", "limit", "sortBy", "sortOrder"]);
+
+  const result = await UserServices.getAllUsersFromDB(options);
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     message: 'Users Retrieve successfully',
-    data: result,
+    meta:result.meta,
+    data: result.data,
   });
 });
 

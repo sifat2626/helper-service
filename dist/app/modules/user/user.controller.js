@@ -17,8 +17,10 @@ const http_status_1 = __importDefault(require("http-status"));
 const user_service_1 = require("./user.service");
 const sendResponse_1 = __importDefault(require("../../utils/sendResponse"));
 const catchAsync_1 = __importDefault(require("../../utils/catchAsync"));
+const pickValidFields_1 = __importDefault(require("../../utils/pickValidFields"));
 const registerUser = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield user_service_1.UserServices.registerUserIntoDB(req.body);
+    const { name, phone, email, password, whatsappNo, additionalRequest, preferredService, duration } = req.body;
+    const result = yield user_service_1.UserServices.registerUserIntoDB(name, phone, email, password, whatsappNo, additionalRequest, preferredService, duration);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.CREATED,
         message: 'User registered successfully',
@@ -26,11 +28,13 @@ const registerUser = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, v
     });
 }));
 const getAllUsers = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield user_service_1.UserServices.getAllUsersFromDB();
+    const options = (0, pickValidFields_1.default)(req.query, ["page", "limit", "sortBy", "sortOrder"]);
+    const result = yield user_service_1.UserServices.getAllUsersFromDB(options);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.CREATED,
         message: 'Users Retrieve successfully',
-        data: result,
+        meta: result.meta,
+        data: result.data,
     });
 }));
 const getMyProfile = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {

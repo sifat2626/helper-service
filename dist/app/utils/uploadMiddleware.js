@@ -7,7 +7,7 @@ exports.uploadMultipleMiddleware = exports.uploadMiddleware = void 0;
 const multer_1 = __importDefault(require("multer"));
 const upload = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 1024 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith("image/") || file.mimetype === 'application/pdf' || file.mimetype === 'text/csv') {
             cb(null, true);

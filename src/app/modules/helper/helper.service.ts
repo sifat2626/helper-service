@@ -3,7 +3,7 @@ import { TService } from '../service/service.interface';
 import { uploadFileToDigitalOcean } from '../../utils/uploadToDigitalOcean';
 import { isDataReferenced } from '../../utils/checkReference';
 import AppError from '../../errors/AppError';
-import { UserRoleEnum } from '@prisma/client';
+import { PrefferedServices, UserRoleEnum } from '@prisma/client';
 import { sendEmail } from '../../utils/sendEmail';
 import { removeFileFromSpaces } from '../../utils/removeFileFromSpaces';
 
@@ -20,7 +20,6 @@ const createHelper = async (
   const maid = await prisma.maid.create({
     data: {
       name: helperData.name,
-      email: helperData.email,
       age: helperData.age,
       workHistory:helperData.workHistory,
       nationality: helperData.nationality,
@@ -31,7 +30,7 @@ const createHelper = async (
     },
   });
 
-  const serviceNames =helperData.serviceNames.split(',')
+  const serviceNames =helperData?.serviceNames?.split(',')
 
   // Step 3: Handle multiple services outside the transaction
   if (helperData.serviceNames && helperData.serviceNames.length > 0) {
@@ -39,9 +38,9 @@ const createHelper = async (
       console.log('serviceName', serviceName);
       // Find or create the service
       const service = await prisma.service.upsert({
-        where: { name: serviceName },
+        where: { name: serviceName as PrefferedServices },
         update: {}, // No updates for existing service
-        create: { name: serviceName.toLowerCase() },
+        create: { name: serviceName  as PrefferedServices},
       });
 
       // Create the relation in `maidService`
@@ -57,7 +56,6 @@ const createHelper = async (
   return maid;
 };
 
-
 const bulkCreateHelpers = async (helpers: any[]) => {
   const errors: string[] = [];
   let successCount = 0;
@@ -66,18 +64,25 @@ const bulkCreateHelpers = async (helpers: any[]) => {
     console.log(helper);
     try {
       // Split the `serviceNames` string into an array using ';' as a delimiter
-      const serviceNames:string[] = []
-      helper.serviceNames.map((serviceName:string)=>{
-        serviceNames.push(serviceName.trim().toLowerCase());
-      })
+      const serviceNames: PrefferedServices[] = [];
+      helper.serviceNames.map((serviceName: PrefferedServices) => {
+        // Trim whitespace and sanitize the string
+        const sanitizedServiceName = serviceName.trim();
 
+        // Validate serviceName to ensure no invalid characters
+        if (sanitizedServiceName && /^[a-zA-Z0-9_ ]*$/.test(sanitizedServiceName)) {
+          serviceNames.push(sanitizedServiceName as PrefferedServices);
+        } else {
+          throw new Error(`Invalid service name: ${serviceName}`);
+        }
+      });
 
       const maid = await prisma.maid.upsert({
-        where: { email: helper.email },
+        where: { id: helper.id },
         update: {
           name: helper.name,
           age: Number(helper.age),
-          workHistory:helper.workHistory,
+          workHistory: helper.workHistory,
           nationality: helper.nationality,
           experience: Number(helper.experience),
           availability: helper.availability.toString().toLowerCase() === 'true',
@@ -86,10 +91,9 @@ const bulkCreateHelpers = async (helpers: any[]) => {
         },
         create: {
           name: helper.name,
-          email: helper.email,
           age: Number(helper.age),
           nationality: helper.nationality,
-          workHistory:helper.workHistory,
+          workHistory: helper.workHistory,
           experience: Number(helper.experience),
           availability: helper.availability.toString().toLowerCase() === 'true',
           photo: helper.photo || '',
@@ -100,12 +104,12 @@ const bulkCreateHelpers = async (helpers: any[]) => {
       // Iterate over the service names and associate them with the maid
       for (const serviceName of serviceNames) {
         let service = await prisma.service.findUnique({
-          where: { name: serviceName },
+          where: { name: serviceName.trim() as PrefferedServices },
         });
 
         if (!service) {
           service = await prisma.service.create({
-            data: { name: serviceName },
+            data: { name: serviceName.trim() as PrefferedServices },
           });
         }
 
@@ -136,6 +140,7 @@ const bulkCreateHelpers = async (helpers: any[]) => {
 };
 
 
+
 const getAllHelpers = async (query: any) => {
   const {
     limit = 10,
@@ -145,7 +150,7 @@ const getAllHelpers = async (query: any) => {
     nationality,
     minExp,
     maxExp,
-    serviceNames, // Array of service names to filter
+    serviceNames = [], // Array of service names to filter
     availability,
     name,
     id,
@@ -212,6 +217,8 @@ const getAllHelpers = async (query: any) => {
   const take = Number(limit);
   const skip = (Number(page) - 1) * take;
 
+
+
   // Ensure serviceNames is an array
   const parsedServiceNames = Array.isArray(serviceNames)
     ? serviceNames
@@ -229,7 +236,6 @@ const getAllHelpers = async (query: any) => {
                 Service: {
                   name: {
                     equals: serviceName,
-                    mode: 'insensitive',
                   },
                 },
               },
@@ -324,18 +330,18 @@ const updateHelper = async (
       where: { maidId: id },
     });
 
-    const serviceNames = helperData.serviceNames.split(',')
+    const serviceNames= helperData.serviceNames.split(',')
 
     // Process and associate new services
     for (const serviceName of serviceNames) {
       let service = await prisma.service.findUnique({
-        where: { name: serviceName.trim().toLowerCase() },
+        where: { name: serviceName.trim()  as PrefferedServices},
       });
 
       if (!service) {
         // Create the service if it doesn't exist
         service = await prisma.service.create({
-          data: { name: serviceName.trim().toLowerCase() },
+          data: { name: serviceName.trim() as PrefferedServices},
         });
       }
 
