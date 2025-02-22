@@ -63,53 +63,49 @@ const bulkCreateHelpers = async (helpers: any[]) => {
   for (const helper of helpers) {
     console.log(helper);
     try {
-      // Split the `serviceNames` string into an array using ';' as a delimiter
+      // Split and sanitize the serviceNames
       const serviceNames: PrefferedServices[] = [];
       helper.serviceNames.map((serviceName: PrefferedServices) => {
-        // Trim whitespace and sanitize the string
         const sanitizedServiceName = serviceName.trim();
-
-        // Validate serviceName to ensure no invalid characters
-        if (sanitizedServiceName && /^[a-zA-Z0-9_ ]*$/.test(sanitizedServiceName)) {
+        if (sanitizedServiceName && /^[a-zA-Z0-9_ -]*$/.test(sanitizedServiceName)) {
           serviceNames.push(sanitizedServiceName as PrefferedServices);
         } else {
           throw new Error(`Invalid service name: ${serviceName}`);
         }
       });
 
-      const maid = await prisma.maid.upsert({
-        where: { id: helper.id },
-        update: {
+      // Ensure valid numbers for age and experience
+      const age = Number(helper.age);
+      const experience = Number(helper.experience);
+      if (isNaN(age) || isNaN(experience)) {
+        throw new Error("Invalid numeric values for age or experience");
+      }
+
+      const availability = helper.availability === true || helper.availability === 'true';
+
+
+      const maid = await prisma.maid.create({
+        data: {
           name: helper.name,
-          age: Number(helper.age),
-          workHistory: helper.workHistory,
-          nationality: helper.nationality,
-          experience: Number(helper.experience),
-          availability: helper.availability.toString().toLowerCase() === 'true',
-          photo: helper.photo || '',
-          biodataUrl: helper.biodataUrl || '',
-        },
-        create: {
-          name: helper.name,
-          age: Number(helper.age),
+          age,
           nationality: helper.nationality,
           workHistory: helper.workHistory,
-          experience: Number(helper.experience),
-          availability: helper.availability.toString().toLowerCase() === 'true',
+          experience,
+          availability,
           photo: helper.photo || '',
           biodataUrl: helper.biodataUrl || '',
         },
       });
 
-      // Iterate over the service names and associate them with the maid
-      for (const serviceName of serviceNames) {
+      // Parallelize service creation and maid-service association
+      await Promise.all(serviceNames.map(async (serviceName) => {
         let service = await prisma.service.findUnique({
-          where: { name: serviceName.trim() as PrefferedServices },
+          where: { name: serviceName },
         });
 
         if (!service) {
           service = await prisma.service.create({
-            data: { name: serviceName.trim() as PrefferedServices },
+            data: { name: serviceName },
           });
         }
 
@@ -126,13 +122,11 @@ const bulkCreateHelpers = async (helpers: any[]) => {
             serviceId: service.id,
           },
         });
-      }
+      }));
 
       successCount++;
     } catch (error: any) {
-      errors.push(
-        `Failed to process helper with email ${helper.email}: ${error.message}`,
-      );
+      errors.push(`Failed to process helper with email ${helper.email}: ${error.message}`);
     }
   }
 
@@ -152,6 +146,7 @@ const getAllHelpers = async (query: any) => {
     maxExp,
     serviceNames = [], // Array of service names to filter
     availability,
+    workHistory,
     name,
     id,
     email,
@@ -186,6 +181,13 @@ const getAllHelpers = async (query: any) => {
     filters.age = { gte: Number(minAge) };
   } else if (maxAge) {
     filters.age = { lte: Number(maxAge) };
+  }
+
+  if(workHistory) {
+    filters.workHistory = {
+      contains: workHistory,
+      mode: 'insensitive',
+    }
   }
 
   if (minExp && maxExp) {
