@@ -23,13 +23,17 @@ const removeFileFromSpaces_1 = require("../../utils/removeFileFromSpaces");
 const createHelper = (helperData, photo, biodata) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     // Step 1: Handle photo and biodata uploads
-    const photoUrl = photo ? yield (0, uploadToDigitalOcean_1.uploadFileToDigitalOcean)(photo, 'maids/photos') : '';
-    const biodataUrl = biodata ? yield (0, uploadToDigitalOcean_1.uploadFileToDigitalOcean)(biodata, 'maids/biodatas') : '';
+    const photoUrl = photo
+        ? yield (0, uploadToDigitalOcean_1.uploadFileToDigitalOcean)(photo, 'maids/photos')
+        : '';
+    const biodataUrl = biodata
+        ? yield (0, uploadToDigitalOcean_1.uploadFileToDigitalOcean)(biodata, 'maids/biodatas')
+        : '';
     // Step 2: Create the maid in a transaction
     const maid = yield prisma_1.default.maid.create({
         data: {
             name: helperData.name,
-            age: helperData.age,
+            age: Number(helperData.age),
             workHistory: helperData.workHistory,
             nationality: helperData.nationality,
             experience: helperData.experience,
@@ -64,13 +68,14 @@ const bulkCreateHelpers = (helpers) => __awaiter(void 0, void 0, void 0, functio
     const errors = [];
     let successCount = 0;
     for (const helper of helpers) {
-        console.log(helper);
+        // console.log({ helper });
         try {
             // Split and sanitize the serviceNames
             const serviceNames = [];
             helper.serviceNames.map((serviceName) => {
                 const sanitizedServiceName = serviceName.trim();
-                if (sanitizedServiceName && /^[a-zA-Z0-9_ -]*$/.test(sanitizedServiceName)) {
+                if (sanitizedServiceName &&
+                    /^[a-zA-Z0-9_ -]*$/.test(sanitizedServiceName)) {
                     serviceNames.push(sanitizedServiceName);
                 }
                 else {
@@ -81,11 +86,29 @@ const bulkCreateHelpers = (helpers) => __awaiter(void 0, void 0, void 0, functio
             const age = Number(helper.age);
             const experience = Number(helper.experience);
             if (isNaN(age) || isNaN(experience)) {
-                throw new Error("Invalid numeric values for age or experience");
+                throw new Error('Invalid numeric values for age or experience');
             }
             const availability = helper.availability === true || helper.availability === 'true';
-            const maid = yield prisma_1.default.maid.create({
-                data: {
+            const maid = yield prisma_1.default.maid.upsert({
+                where: {
+                    name_age_nationality_experience: {
+                        name: helper.name,
+                        age,
+                        nationality: helper.nationality,
+                        experience
+                    }
+                },
+                create: {
+                    name: helper.name,
+                    age,
+                    nationality: helper.nationality,
+                    workHistory: helper.workHistory,
+                    experience,
+                    availability,
+                    photo: helper.photo || '',
+                    biodataUrl: helper.biodataUrl || '',
+                },
+                update: {
                     name: helper.name,
                     age,
                     nationality: helper.nationality,
@@ -319,16 +342,16 @@ const deleteHelper = (id) => __awaiter(void 0, void 0, void 0, function* () {
         where: { id },
     });
     if (!maid) {
-        throw new AppError_1.default(404, "Helper (Maid) not found.");
+        throw new AppError_1.default(404, 'Helper (Maid) not found.');
     }
     // Ensure the maid is not referenced in other tables before deletion
     const referencingModels = [
-        { model: "booking", field: "maidId" },
-        { model: "favorite", field: "maidId" },
+        { model: 'booking', field: 'maidId' },
+        { model: 'favorite', field: 'maidId' },
     ];
-    const isReferenced = yield (0, checkReference_1.isDataReferenced)("maid", "id", id, referencingModels);
+    const isReferenced = yield (0, checkReference_1.isDataReferenced)('maid', 'id', id, referencingModels);
     if (isReferenced) {
-        throw new AppError_1.default(400, "This maid cannot be deleted because it is referenced in other records.");
+        throw new AppError_1.default(400, 'This maid cannot be deleted because it is referenced in other records.');
     }
     // Delete photo & biodata from DigitalOcean Spaces if they exist
     if (maid.photo) {
@@ -341,7 +364,7 @@ const deleteHelper = (id) => __awaiter(void 0, void 0, void 0, function* () {
     yield prisma_1.default.maid.delete({
         where: { id },
     });
-    return { message: "Helper (Maid) deleted successfully" };
+    return { message: 'Helper (Maid) deleted successfully' };
 });
 const addHelperToFavorites = (userId, maidId) => __awaiter(void 0, void 0, void 0, function* () {
     const maid = yield prisma_1.default.maid.findUnique({
@@ -396,8 +419,8 @@ const removeHelperFromFavorites = (userId, maidId) => __awaiter(void 0, void 0, 
     }
     const result = yield prisma_1.default.favorite.delete({
         where: {
-            id: existingFavorite.id
-        }
+            id: existingFavorite.id,
+        },
     });
     return result;
 });

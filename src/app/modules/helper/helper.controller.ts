@@ -50,6 +50,7 @@ const createHelpers = catchAsync(async (req: Request, res) => {
     throw new AppError(400, 'Invalid CSV format.');
   }
 
+
   for (let i = 1; i < csvRows.length; i++) {
     const row = csvRows[i].split(',');
     if (row.length !== headers.length) {
@@ -64,7 +65,6 @@ const createHelpers = catchAsync(async (req: Request, res) => {
 
     if (
       !helper.name ||
-      !helper.email ||
       !helper.age ||
       !helper.nationality ||
       !helper.workHistory ||

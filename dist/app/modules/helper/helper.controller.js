@@ -58,7 +58,6 @@ const createHelpers = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, 
             return acc;
         }, {});
         if (!helper.name ||
-            !helper.email ||
             !helper.age ||
             !helper.nationality ||
             !helper.workHistory ||

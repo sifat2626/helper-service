@@ -13,15 +13,19 @@ const createHelper = async (
   biodata?: Express.Multer.File,
 ) => {
   // Step 1: Handle photo and biodata uploads
-  const photoUrl = photo ? await uploadFileToDigitalOcean(photo, 'maids/photos') : '';
-  const biodataUrl = biodata ? await uploadFileToDigitalOcean(biodata, 'maids/biodatas') : '';
+  const photoUrl = photo
+    ? await uploadFileToDigitalOcean(photo, 'maids/photos')
+    : '';
+  const biodataUrl = biodata
+    ? await uploadFileToDigitalOcean(biodata, 'maids/biodatas')
+    : '';
 
   // Step 2: Create the maid in a transaction
   const maid = await prisma.maid.create({
     data: {
       name: helperData.name,
-      age: helperData.age,
-      workHistory:helperData.workHistory,
+      age: Number(helperData.age),
+      workHistory: helperData.workHistory,
       nationality: helperData.nationality,
       experience: helperData.experience,
       photo: photoUrl,
@@ -30,7 +34,7 @@ const createHelper = async (
     },
   });
 
-  const serviceNames =helperData?.serviceNames?.split(',')
+  const serviceNames = helperData?.serviceNames?.split(',');
 
   // Step 3: Handle multiple services outside the transaction
   if (helperData.serviceNames && helperData.serviceNames.length > 0) {
@@ -40,7 +44,7 @@ const createHelper = async (
       const service = await prisma.service.upsert({
         where: { name: serviceName as PrefferedServices },
         update: {}, // No updates for existing service
-        create: { name: serviceName  as PrefferedServices},
+        create: { name: serviceName as PrefferedServices },
       });
 
       // Create the relation in `maidService`
@@ -61,13 +65,16 @@ const bulkCreateHelpers = async (helpers: any[]) => {
   let successCount = 0;
 
   for (const helper of helpers) {
-    console.log(helper);
+    // console.log({ helper });
     try {
       // Split and sanitize the serviceNames
       const serviceNames: PrefferedServices[] = [];
       helper.serviceNames.map((serviceName: PrefferedServices) => {
         const sanitizedServiceName = serviceName.trim();
-        if (sanitizedServiceName && /^[a-zA-Z0-9_ -]*$/.test(sanitizedServiceName)) {
+        if (
+          sanitizedServiceName &&
+          /^[a-zA-Z0-9_ -]*$/.test(sanitizedServiceName)
+        ) {
           serviceNames.push(sanitizedServiceName as PrefferedServices);
         } else {
           throw new Error(`Invalid service name: ${serviceName}`);
@@ -78,14 +85,32 @@ const bulkCreateHelpers = async (helpers: any[]) => {
       const age = Number(helper.age);
       const experience = Number(helper.experience);
       if (isNaN(age) || isNaN(experience)) {
-        throw new Error("Invalid numeric values for age or experience");
+        throw new Error('Invalid numeric values for age or experience');
       }
 
-      const availability = helper.availability === true || helper.availability === 'true';
+      const availability =
+        helper.availability === true || helper.availability === 'true';
 
-
-      const maid = await prisma.maid.create({
-        data: {
+      const maid = await prisma.maid.upsert({
+        where: {
+          name_age_nationality_experience:{
+            name:helper.name,
+            age,
+            nationality: helper.nationality,
+            experience
+          }
+        },
+        create: {
+          name: helper.name,
+          age,
+          nationality: helper.nationality,
+          workHistory: helper.workHistory,
+          experience,
+          availability,
+          photo: helper.photo || '',
+          biodataUrl: helper.biodataUrl || '',
+        },
+        update: {
           name: helper.name,
           age,
           nationality: helper.nationality,
@@ -98,42 +123,44 @@ const bulkCreateHelpers = async (helpers: any[]) => {
       });
 
       // Parallelize service creation and maid-service association
-      await Promise.all(serviceNames.map(async (serviceName) => {
-        let service = await prisma.service.findUnique({
-          where: { name: serviceName },
-        });
-
-        if (!service) {
-          service = await prisma.service.create({
-            data: { name: serviceName },
+      await Promise.all(
+        serviceNames.map(async serviceName => {
+          let service = await prisma.service.findUnique({
+            where: { name: serviceName },
           });
-        }
 
-        await prisma.maidService.upsert({
-          where: {
-            maidId_serviceId: {
+          if (!service) {
+            service = await prisma.service.create({
+              data: { name: serviceName },
+            });
+          }
+
+          await prisma.maidService.upsert({
+            where: {
+              maidId_serviceId: {
+                maidId: maid.id,
+                serviceId: service.id,
+              },
+            },
+            update: {},
+            create: {
               maidId: maid.id,
               serviceId: service.id,
             },
-          },
-          update: {},
-          create: {
-            maidId: maid.id,
-            serviceId: service.id,
-          },
-        });
-      }));
+          });
+        }),
+      );
 
       successCount++;
     } catch (error: any) {
-      errors.push(`Failed to process helper with email ${helper.email}: ${error.message}`);
+      errors.push(
+        `Failed to process helper with email ${helper.email}: ${error.message}`,
+      );
     }
   }
 
   return { successCount, errors };
 };
-
-
 
 const getAllHelpers = async (query: any) => {
   const {
@@ -183,11 +210,11 @@ const getAllHelpers = async (query: any) => {
     filters.age = { lte: Number(maxAge) };
   }
 
-  if(workHistory) {
+  if (workHistory) {
     filters.workHistory = {
       contains: workHistory,
       mode: 'insensitive',
-    }
+    };
   }
 
   if (minExp && maxExp) {
@@ -195,17 +222,17 @@ const getAllHelpers = async (query: any) => {
       gte: Number(minExp),
       lte: Number(maxExp),
     };
-  } else if (minExp  && !maxExp) {
+  } else if (minExp && !maxExp) {
     filters.experience = { gte: Number(minExp) };
   } else if (maxExp && !minExp) {
     filters.experience = { lte: Number(maxExp) };
   }
 
-  if(nationality) {
+  if (nationality) {
     filters.nationality = {
       contains: nationality,
       mode: 'insensitive',
-    }
+    };
   }
   //
   // if (experience) {
@@ -218,8 +245,6 @@ const getAllHelpers = async (query: any) => {
 
   const take = Number(limit);
   const skip = (Number(page) - 1) * take;
-
-
 
   // Ensure serviceNames is an array
   const parsedServiceNames = Array.isArray(serviceNames)
@@ -277,13 +302,11 @@ const getAllHelpers = async (query: any) => {
   };
 };
 
-
-
 const updateHelper = async (
   id: string,
   helperData: Partial<TService>,
   photo?: Express.Multer.File,
-  biodata?: Express.Multer.File
+  biodata?: Express.Multer.File,
 ) => {
   // Check if the helper exists
   const existingHelper = await prisma.maid.findUnique({
@@ -310,9 +333,12 @@ const updateHelper = async (
   if (helperData.name) updatedHelperData.name = helperData.name;
   if (helperData.email) updatedHelperData.email = helperData.email;
   if (helperData.age) updatedHelperData.age = Number(helperData.age);
-  if (helperData.experience) updatedHelperData.age = Number(helperData.experience);
-  if (helperData.workHistory) updatedHelperData.workHistory = helperData.workHistory;
-  if (helperData.nationality) updatedHelperData.nationality = helperData.nationality;
+  if (helperData.experience)
+    updatedHelperData.age = Number(helperData.experience);
+  if (helperData.workHistory)
+    updatedHelperData.workHistory = helperData.workHistory;
+  if (helperData.nationality)
+    updatedHelperData.nationality = helperData.nationality;
   if (photoUrl) updatedHelperData.photo = photoUrl;
   if (biodataUrl) updatedHelperData.biodataUrl = biodataUrl;
   if (helperData.availability !== undefined) {
@@ -332,18 +358,18 @@ const updateHelper = async (
       where: { maidId: id },
     });
 
-    const serviceNames= helperData.serviceNames.split(',')
+    const serviceNames = helperData.serviceNames.split(',');
 
     // Process and associate new services
     for (const serviceName of serviceNames) {
       let service = await prisma.service.findUnique({
-        where: { name: serviceName.trim()  as PrefferedServices},
+        where: { name: serviceName.trim() as PrefferedServices },
       });
 
       if (!service) {
         // Create the service if it doesn't exist
         service = await prisma.service.create({
-          data: { name: serviceName.trim() as PrefferedServices},
+          data: { name: serviceName.trim() as PrefferedServices },
         });
       }
 
@@ -360,7 +386,6 @@ const updateHelper = async (
   return updatedHelper;
 };
 
-
 const deleteHelper = async (id: string) => {
   // Check if the maid exists
   const maid = await prisma.maid.findUnique({
@@ -368,18 +393,26 @@ const deleteHelper = async (id: string) => {
   });
 
   if (!maid) {
-    throw new AppError(404, "Helper (Maid) not found.");
+    throw new AppError(404, 'Helper (Maid) not found.');
   }
 
   // Ensure the maid is not referenced in other tables before deletion
   const referencingModels = [
-    { model: "booking", field: "maidId" },
-    { model: "favorite", field: "maidId" },
+    { model: 'booking', field: 'maidId' },
+    { model: 'favorite', field: 'maidId' },
   ];
 
-  const isReferenced = await isDataReferenced("maid", "id", id, referencingModels);
+  const isReferenced = await isDataReferenced(
+    'maid',
+    'id',
+    id,
+    referencingModels,
+  );
   if (isReferenced) {
-    throw new AppError(400, "This maid cannot be deleted because it is referenced in other records.");
+    throw new AppError(
+      400,
+      'This maid cannot be deleted because it is referenced in other records.',
+    );
   }
 
   // Delete photo & biodata from DigitalOcean Spaces if they exist
@@ -395,7 +428,7 @@ const deleteHelper = async (id: string) => {
     where: { id },
   });
 
-  return { message: "Helper (Maid) deleted successfully" };
+  return { message: 'Helper (Maid) deleted successfully' };
 };
 
 const addHelperToFavorites = async (userId: string, maidId: string) => {
@@ -454,18 +487,18 @@ const removeHelperFromFavorites = async (userId: string, maidId: string) => {
     },
   });
 
-  if(!existingFavorite) {
+  if (!existingFavorite) {
     throw new AppError(400, 'This maid is not in your favorites.');
   }
 
   const result = await prisma.favorite.delete({
-    where:{
-     id:existingFavorite.id
-    }
-  })
+    where: {
+      id: existingFavorite.id,
+    },
+  });
 
-  return result
-}
+  return result;
+};
 
 const bookHelper = async (userId: string, maidId: string) => {
   return prisma.$transaction(async prisma => {

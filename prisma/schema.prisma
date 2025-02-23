@@ -56,6 +56,7 @@ model Maid {
   Favorite     Favorite[]
   MaidServices MaidService[]
 
+  @@unique([name, age, nationality, experience])
   @@map("maids")
 }
 
